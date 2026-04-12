@@ -1,191 +1,459 @@
--- ============================================
--- AssetTrack — MySQL Database Schema
--- Database: assettrack_db
--- ============================================
+-- =========================================================
+-- INVENTORY SYSTEM DATABASE
+-- MySQL 8.0+
+-- =========================================================
 
-CREATE DATABASE IF NOT EXISTS assettrack_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE assettrack_db;
+-- Optional: create database
+CREATE DATABASE IF NOT EXISTS inventory_system
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
 
--- ============================================
--- USERS
--- ============================================
-CREATE TABLE IF NOT EXISTS users (
-    id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    user_code     VARCHAR(20) NOT NULL UNIQUE,
-    first_name    VARCHAR(100) NOT NULL,
-    last_name     VARCHAR(100) NOT NULL,
-    email         VARCHAR(191) NOT NULL UNIQUE,
-    username      VARCHAR(80) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL,
-    role          ENUM('Administrator', 'Staff', 'Viewer') NOT NULL DEFAULT 'Staff',
-    department_id INT UNSIGNED NULL,
-    status        ENUM('Active', 'Inactive') NOT NULL DEFAULT 'Active',
-    last_login_at DATETIME NULL,
-    created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_role (role),
-    INDEX idx_status (status)
-) ENGINE=InnoDB;
+USE inventory_system;
 
--- ============================================
--- DEPARTMENTS
--- ============================================
-CREATE TABLE IF NOT EXISTS departments (
-    id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    name       VARCHAR(100) NOT NULL UNIQUE,
-    code       VARCHAR(20) NOT NULL UNIQUE,
-    head_user_id INT UNSIGNED NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB;
+-- =========================================================
+-- SAFETY: Drop tables in reverse order if you want to rerun
+-- =========================================================
+SET FOREIGN_KEY_CHECKS = 0;
 
-ALTER TABLE users
-    ADD CONSTRAINT fk_users_dept
-    FOREIGN KEY (department_id) REFERENCES departments(id)
-    ON DELETE SET NULL ON UPDATE CASCADE;
+DROP TABLE IF EXISTS inventory;
+DROP TABLE IF EXISTS custodians;
+DROP TABLE IF EXISTS brands;
+DROP TABLE IF EXISTS sub_categories;
+DROP TABLE IF EXISTS categories;
+DROP TABLE IF EXISTS departments;
+DROP TABLE IF EXISTS companies;
+DROP TABLE IF EXISTS age_statuses;
 
--- ============================================
--- ASSET CATEGORIES
--- ============================================
-CREATE TABLE IF NOT EXISTS categories (
-    id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    name       VARCHAR(100) NOT NULL UNIQUE,
-    prefix     VARCHAR(5) NOT NULL COMMENT 'Used for Asset ID generation, e.g. IT, FN, AV',
-    description TEXT NULL,
-    is_active  TINYINT(1) NOT NULL DEFAULT 1,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB;
+SET FOREIGN_KEY_CHECKS = 1;
 
--- ============================================
--- ASSETS (INVENTORY)
--- ============================================
-CREATE TABLE IF NOT EXISTS assets (
-    id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    asset_code      VARCHAR(30) NOT NULL UNIQUE COMMENT 'e.g. IT-001',
-    name            VARCHAR(200) NOT NULL,
-    category_id     INT UNSIGNED NOT NULL,
-    department_id   INT UNSIGNED NULL,
-    serial_number   VARCHAR(100) NULL,
-    model           VARCHAR(150) NULL,
-    brand           VARCHAR(100) NULL,
-    condition_status ENUM('New', 'Good', 'Fair', 'Poor') NOT NULL DEFAULT 'Good',
-    deploy_status   ENUM('Available', 'Deployed', 'Maintenance', 'Written Off') NOT NULL DEFAULT 'Available',
-    acquisition_date DATE NULL,
-    value           DECIMAL(12,2) NULL COMMENT 'Purchase value in local currency',
-    assigned_to     VARCHAR(200) NULL COMMENT 'Employee name or location',
-    notes           TEXT NULL,
-    image_path      VARCHAR(255) NULL,
-    created_by      INT UNSIGNED NULL,
-    created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_category (category_id),
-    INDEX idx_deploy_status (deploy_status),
-    INDEX idx_department (department_id),
-    CONSTRAINT fk_assets_category
-        FOREIGN KEY (category_id) REFERENCES categories(id)
-        ON DELETE RESTRICT ON UPDATE CASCADE,
-    CONSTRAINT fk_assets_department
-        FOREIGN KEY (department_id) REFERENCES departments(id)
-        ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB;
+-- =========================================================
+-- 1) COMPANY
+-- =========================================================
+CREATE TABLE companies (
+    company_id       BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    company_code     VARCHAR(20) NOT NULL,
+    company_name     VARCHAR(100) NOT NULL,
+    description      VARCHAR(255) NULL,
+    is_active        TINYINT(1) NOT NULL DEFAULT 1,
+    created_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
--- ============================================
--- DEPLOYMENT HISTORY LOG
--- ============================================
-CREATE TABLE IF NOT EXISTS deployment_logs (
-    id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    log_code      VARCHAR(20) NOT NULL UNIQUE COMMENT 'e.g. LOG-0001',
-    asset_id      INT UNSIGNED NOT NULL,
-    action        ENUM('Deployed', 'Returned', 'Maintenance', 'Written Off', 'Added', 'Edited') NOT NULL,
-    assigned_to   VARCHAR(200) NULL,
-    department_id INT UNSIGNED NULL,
-    processed_by  INT UNSIGNED NULL COMMENT 'User who logged this transaction',
-    remarks       TEXT NULL,
-    transaction_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_asset (asset_id),
-    INDEX idx_action (action),
-    INDEX idx_date (transaction_date),
-    CONSTRAINT fk_logs_asset
-        FOREIGN KEY (asset_id) REFERENCES assets(id)
-        ON DELETE RESTRICT ON UPDATE CASCADE,
-    CONSTRAINT fk_logs_dept
-        FOREIGN KEY (department_id) REFERENCES departments(id)
-        ON DELETE SET NULL ON UPDATE CASCADE,
-    CONSTRAINT fk_logs_user
-        FOREIGN KEY (processed_by) REFERENCES users(id)
-        ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB;
+    CONSTRAINT uq_companies_code UNIQUE (company_code),
+    CONSTRAINT uq_companies_name UNIQUE (company_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ============================================
--- SYSTEM SETTINGS
--- ============================================
-CREATE TABLE IF NOT EXISTS system_settings (
-    setting_key   VARCHAR(100) PRIMARY KEY,
-    setting_value TEXT NOT NULL,
-    updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB;
+-- =========================================================
+-- 2) CATEGORY
+-- =========================================================
+CREATE TABLE categories (
+    category_id      BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    category_name    VARCHAR(100) NOT NULL,
+    description      VARCHAR(255) NULL,
+    is_active        TINYINT(1) NOT NULL DEFAULT 1,
+    created_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
--- ============================================
+    CONSTRAINT uq_categories_name UNIQUE (category_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================
+-- 3) SUB CATEGORY
+-- =========================================================
+CREATE TABLE sub_categories (
+    sub_category_id  BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    sub_category_name VARCHAR(150) NOT NULL,
+    description      VARCHAR(255) NULL,
+    is_active        TINYINT(1) NOT NULL DEFAULT 1,
+    created_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    CONSTRAINT uq_sub_categories_name UNIQUE (sub_category_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================
+-- 4) BRAND
+-- =========================================================
+CREATE TABLE brands (
+    brand_id         BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    brand_name       VARCHAR(150) NOT NULL,
+    description      VARCHAR(255) NULL,
+    is_active        TINYINT(1) NOT NULL DEFAULT 1,
+    created_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    CONSTRAINT uq_brands_name UNIQUE (brand_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================
+-- 5) CUSTODIANS
+-- description: employee or place
+-- =========================================================
+CREATE TABLE custodians (
+    custodian_id      BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    custodian_name    VARCHAR(150) NOT NULL,
+    custodian_type    ENUM('EMPLOYEE', 'PLACE', 'OTHER') NOT NULL DEFAULT 'EMPLOYEE',
+    employee_code     VARCHAR(50) NULL,
+    email             VARCHAR(150) NULL,
+    mobile_no         VARCHAR(50) NULL,
+    notes             TEXT NULL,
+    is_active         TINYINT(1) NOT NULL DEFAULT 1,
+    created_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    CONSTRAINT uq_custodians_name UNIQUE (custodian_name),
+    CONSTRAINT uq_custodians_employee_code UNIQUE (employee_code),
+    CONSTRAINT uq_custodians_email UNIQUE (email)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================
+-- 6) DEPARTMENTS
+-- =========================================================
+CREATE TABLE departments (
+    department_id     BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    department_code   VARCHAR(20) NULL,
+    department_name   VARCHAR(150) NOT NULL,
+    description       VARCHAR(255) NULL,
+    is_active         TINYINT(1) NOT NULL DEFAULT 1,
+    created_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    CONSTRAINT uq_departments_name UNIQUE (department_name),
+    CONSTRAINT uq_departments_code UNIQUE (department_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================
+-- 7) AGE STATUS
+-- =========================================================
+CREATE TABLE age_statuses (
+    age_status_id     BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    status_name       VARCHAR(50) NOT NULL,
+    description       VARCHAR(255) NULL,
+    is_active         TINYINT(1) NOT NULL DEFAULT 1,
+    created_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    CONSTRAINT uq_age_statuses_name UNIQUE (status_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================
+-- 8) INVENTORY
+-- main table
+-- =========================================================
+CREATE TABLE inventory (
+    inventory_id         BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+
+    -- Example: NCIA-0001
+    inventory_no         VARCHAR(30) NOT NULL,
+
+    company_id           BIGINT UNSIGNED NOT NULL,
+    category_id          BIGINT UNSIGNED NOT NULL,
+    sub_category_id      BIGINT UNSIGNED NOT NULL,
+    brand_id             BIGINT UNSIGNED NOT NULL,
+
+    model                VARCHAR(150) NULL,
+    item_description     TEXT NULL,
+
+    serial_number        VARCHAR(150) NULL,
+
+    custodian_id         BIGINT UNSIGNED NULL,
+    department_id        BIGINT UNSIGNED NULL,
+
+    mac_address          VARCHAR(50) NULL,
+    device_name          VARCHAR(150) NULL,
+    current_os           VARCHAR(100) NULL,
+
+    -- e.g. 126 months
+    device_age_months    INT UNSIGNED NULL,
+
+    age_status_id        BIGINT UNSIGNED NULL,
+
+    purchase_date        DATE NULL,
+    purchase_month       VARCHAR(20) NULL,
+    purchase_year        YEAR NULL,
+
+    remarks              TEXT NULL,
+
+    status               ENUM('ACTIVE', 'INACTIVE', 'RETIRED', 'DISPOSED', 'LOST', 'DAMAGED') NOT NULL DEFAULT 'ACTIVE',
+
+    created_at           TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at           TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    CONSTRAINT uq_inventory_no UNIQUE (inventory_no),
+    CONSTRAINT uq_inventory_serial_number UNIQUE (serial_number),
+
+    CONSTRAINT chk_device_age_months CHECK (device_age_months IS NULL OR device_age_months >= 0),
+
+    CONSTRAINT fk_inventory_company
+        FOREIGN KEY (company_id) REFERENCES companies(company_id)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
+
+    CONSTRAINT fk_inventory_category
+        FOREIGN KEY (category_id) REFERENCES categories(category_id)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
+
+    CONSTRAINT fk_inventory_sub_category
+        FOREIGN KEY (sub_category_id) REFERENCES sub_categories(sub_category_id)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
+
+    CONSTRAINT fk_inventory_brand
+        FOREIGN KEY (brand_id) REFERENCES brands(brand_id)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
+
+    CONSTRAINT fk_inventory_custodian
+        FOREIGN KEY (custodian_id) REFERENCES custodians(custodian_id)
+        ON UPDATE CASCADE
+        ON DELETE SET NULL,
+
+    CONSTRAINT fk_inventory_department
+        FOREIGN KEY (department_id) REFERENCES departments(department_id)
+        ON UPDATE CASCADE
+        ON DELETE SET NULL,
+
+    CONSTRAINT fk_inventory_age_status
+        FOREIGN KEY (age_status_id) REFERENCES age_statuses(age_status_id)
+        ON UPDATE CASCADE
+        ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================
+-- INDEXES FOR FASTER SEARCHING
+-- =========================================================
+CREATE INDEX idx_inventory_company        ON inventory(company_id);
+CREATE INDEX idx_inventory_category       ON inventory(category_id);
+CREATE INDEX idx_inventory_sub_category   ON inventory(sub_category_id);
+CREATE INDEX idx_inventory_brand          ON inventory(brand_id);
+CREATE INDEX idx_inventory_custodian      ON inventory(custodian_id);
+CREATE INDEX idx_inventory_department     ON inventory(department_id);
+CREATE INDEX idx_inventory_age_status     ON inventory(age_status_id);
+CREATE INDEX idx_inventory_purchase_date  ON inventory(purchase_date);
+CREATE INDEX idx_inventory_device_name    ON inventory(device_name);
+CREATE INDEX idx_inventory_model          ON inventory(model);
+CREATE INDEX idx_inventory_status         ON inventory(status);
+
+-- =========================================================
+-- TRIGGERS:
+-- auto-fill purchase_month and purchase_year from purchase_date
+-- =========================================================
+DROP TRIGGER IF EXISTS trg_inventory_before_insert;
+DELIMITER $$
+CREATE TRIGGER trg_inventory_before_insert
+BEFORE INSERT ON inventory
+FOR EACH ROW
+BEGIN
+    IF NEW.purchase_date IS NOT NULL THEN
+        SET NEW.purchase_month = MONTHNAME(NEW.purchase_date);
+        SET NEW.purchase_year  = YEAR(NEW.purchase_date);
+    END IF;
+END$$
+DELIMITER ;
+
+DROP TRIGGER IF EXISTS trg_inventory_before_update;
+DELIMITER $$
+CREATE TRIGGER trg_inventory_before_update
+BEFORE UPDATE ON inventory
+FOR EACH ROW
+BEGIN
+    IF NEW.purchase_date IS NOT NULL THEN
+        SET NEW.purchase_month = MONTHNAME(NEW.purchase_date);
+        SET NEW.purchase_year  = YEAR(NEW.purchase_date);
+    ELSE
+        SET NEW.purchase_month = NULL;
+        SET NEW.purchase_year  = NULL;
+    END IF;
+END$$
+DELIMITER ;
+
+-- =========================================================
 -- SEED DATA
--- ============================================
+-- =========================================================
 
--- Departments
-INSERT INTO departments (name, code) VALUES
-    ('Information Technology', 'IT'),
-    ('Human Resources', 'HR'),
-    ('Finance', 'FIN'),
-    ('Sales', 'SLS'),
-    ('Marketing', 'MKT'),
-    ('Legal', 'LGL'),
-    ('Operations', 'OPS'),
-    ('Executive', 'EXEC');
+-- Companies
+INSERT INTO companies (company_code, company_name, description) VALUES
+('NCIA', 'NCIA', 'Company list'),
+('NCIA1', 'NCIA 1', 'Company list'),
+('NCIA2', 'NCIA 2', 'Company list'),
+('NCIALIFE', 'NCIA Life', 'Company list');
 
 -- Categories
-INSERT INTO categories (name, prefix, description) VALUES
-    ('Computer',    'IT',  'Laptops, desktops, workstations'),
-    ('Mobile',      'MB',  'Smartphones and feature phones'),
-    ('Tablet',      'TB',  'iPads, Android tablets'),
-    ('Printer',     'PR',  'Laser and inkjet printers'),
-    ('Monitor',     'MN',  'Display screens and monitors'),
-    ('Telecom',     'TC',  'IP phones, headsets'),
-    ('AV Equipment','AV',  'Projectors, cameras, audio gear'),
-    ('Furniture',   'FN',  'Desks, chairs, cabinets'),
-    ('Vehicle',     'VH',  'Company cars and motorcycles'),
-    ('Other',       'OT',  'Miscellaneous assets');
+INSERT INTO categories (category_name, description) VALUES
+('IT ACCESSORY', 'Item category'),
+('HARDWARE', 'Item category');
 
--- Default admin user (password: admin123)
-INSERT INTO users (user_code, first_name, last_name, email, username, password_hash, role, department_id) VALUES
-    ('USR-001', 'Maria', 'Santos', 'maria@company.com', 'admin',
-     '$2y$12$eImiTXuWVxfM37uY4JANjOe5XbNIjlcDSGJjjXfVlqVo3h.rRH3u6',
-     'Administrator', 1);
+-- Sub Categories
+INSERT INTO sub_categories (sub_category_name, description) VALUES
+('LAPTOP', 'Item sub category'),
+('Bag', 'Item sub category'),
+('Laptop Charger', 'Item sub category'),
+('SATA enclosure', 'Item sub category'),
+('CCTV camera', 'Item sub category'),
+('FlashDrive', 'Item sub category'),
+('HDMI', 'Item sub category'),
+('Keyboard', 'Item sub category'),
+('Mouse', 'Item sub category'),
+('Network', 'Item sub category'),
+('Tools', 'Item sub category'),
+('Monitor', 'Item sub category'),
+('Laser Presenter', 'Item sub category'),
+('Cable', 'Item sub category'),
+('PSU', 'Item sub category'),
+('RAM', 'Item sub category'),
+('Power Cord', 'Item sub category'),
+('Headphones', 'Item sub category'),
+('USB HUB', 'Item sub category'),
+('RFID Scanner', 'Item sub category'),
+('WiFi Adapter', 'Item sub category'),
+('Phone', 'Item sub category'),
+('Phone Charger', 'Item sub category'),
+('Desktop', 'Item sub category'),
+('Digital Ballpen', 'Item sub category'),
+('Nvm e ssd', 'Item sub category');
 
--- Sample assets
-INSERT INTO assets (asset_code, name, category_id, department_id, serial_number, condition_status, deploy_status, acquisition_date, value, assigned_to, created_by) VALUES
-    ('IT-001', 'Laptop Dell XPS 15',    1, 1, 'SN-DELL-001', 'Good', 'Available', '2024-01-15', 85000.00, NULL, 1),
-    ('IT-002', 'MacBook Air M3',         1, 5, 'SN-APPL-001', 'Good', 'Deployed',  '2024-02-20', 95000.00, 'Carlo Diaz', 1),
-    ('MB-001', 'iPhone 15 Pro',          2, 4, 'SN-APPL-002', 'Good', 'Deployed',  '2024-03-01', 65000.00, 'Juan Cruz', 1),
-    ('PR-001', 'HP LaserJet Pro',        4, 3, 'SN-HPLJ-001', 'Fair', 'Deployed',  '2023-11-10', 25000.00, 'Finance Dept', 1),
-    ('FN-001', 'Office Chair Ergo',      8, 2, NULL,           'Good', 'Deployed',  '2023-09-05', 12000.00, 'Ana Reyes', 1),
-    ('AV-001', 'Projector Epson X',      7, 7, 'SN-EPSN-001', 'Good', 'Deployed',  '2023-07-20', 45000.00, 'Training Room', 1),
-    ('TB-001', 'iPad Pro 12.9',          3, 6, 'SN-APPL-003', 'Good', 'Deployed',  '2024-04-15', 55000.00, 'Liza Ramos', 1),
-    ('VH-001', 'Toyota Innova 2023',     9, 8, 'TYT-INV-2023', 'Good','Deployed', '2023-12-01', 1250000.00,'Exec Driver', 1);
+-- Brands
+INSERT INTO brands (brand_name, description) VALUES
+('DELL', 'Item brand'),
+('LENOVO', 'Item brand'),
+('HUAWEI', 'Item brand'),
+('HP', 'Item brand'),
+('ACER', 'Item brand'),
+('ORICO', 'Item brand'),
+('SanDisk', 'Item brand'),
+('Transcend', 'Item brand'),
+('Red Mesh', 'Item brand'),
+('A4 Tech', 'Item brand'),
+('Logitech', 'Item brand'),
+('MegaBox', 'Item brand'),
+('MSI', 'Item brand'),
+('Networking Tools', 'Item brand'),
+('HAVIT', 'Item brand'),
+('ARMAK', 'Item brand'),
+('DeepCoot', 'Item brand'),
+('Secure', 'Item brand'),
+('SAMSUNG', 'Item brand'),
+('STANDARD', 'Item brand'),
+('WEIBO', 'Item brand'),
+('RAMAXEL', 'Item brand'),
+('WALRAM', 'Item brand'),
+('ROYU', 'Item brand'),
+('Ugreen', 'Item brand'),
+('CYGNETT', 'Item brand'),
+('FEELTEK', 'Item brand'),
+('OPPO', 'Item brand'),
+('HONOR', 'Item brand'),
+('IPHONE', 'Item brand'),
+('ASUS', 'Item brand'),
+('MAC', 'Item brand'),
+('MOTIVO', 'Item brand'),
+('WD Green', 'Item brand');
 
--- Sample deployment logs
-INSERT INTO deployment_logs (log_code, asset_id, action, assigned_to, department_id, processed_by, remarks, transaction_date) VALUES
-    ('LOG-0001', 2, 'Deployed',  'Carlo Diaz',    5, 1, 'New hire setup',       '2024-02-20 09:00:00'),
-    ('LOG-0002', 3, 'Deployed',  'Juan Cruz',      4, 1, 'For field work',       '2024-03-01 10:00:00'),
-    ('LOG-0003', 5, 'Deployed',  'Ana Reyes',      2, 1, 'New hire setup',       '2023-09-05 08:30:00'),
-    ('LOG-0004', 7, 'Deployed',  'Liza Ramos',     6, 1, 'Client meetings',      '2024-04-15 11:00:00'),
-    ('LOG-0005', 8, 'Deployed',  'Exec Driver',    8, 1, 'Monthly assignment',   '2023-12-01 07:00:00'),
-    ('LOG-0006', 4, 'Maintenance','Finance Dept',  3, 1, 'Paper jam repair',     '2026-04-03 13:00:00');
+-- Custodians
+-- Placeholder record; you can add real employees/places later
+INSERT INTO custodians (custodian_name, custodian_type, notes) VALUES
+('TBD', 'OTHER', 'Placeholder custodian');
 
--- System settings defaults
-INSERT INTO system_settings (setting_key, setting_value) VALUES
-    ('org_name',        'ACME Corporation'),
-    ('system_name',     'AssetTrack'),
-    ('currency',        '₱'),
-    ('date_format',     'Y-m-d'),
-    ('timezone',        'Asia/Manila'),
-    ('viewer_passcode', '123456'),
-    ('session_timeout', '60'),
-    ('max_login_attempts','5');
+-- Departments
+INSERT INTO departments (department_code, department_name, description) VALUES
+('IFG', 'IFG (Individual & Family Group)', 'Company department'),
+('IT', 'I.T (Information Technology)', 'Company department'),
+('FIN', 'Finance', 'Company department'),
+('MKT', 'Marketing', 'Company department'),
+('ADM', 'Admin', 'Company department'),
+('HR', 'HR (Human Resources)', 'Company department'),
+('EB', 'EB (Employee Benefits)', 'Company department'),
+('PC', 'P&C (Property & Casualty)', 'Company department'),
+('BCD', 'Bacolod Branch', 'Company department'),
+('CLM', 'Claims', 'Company department'),
+('EXE', 'Executive', 'Company department'),
+('HD', 'Helpdesk', 'Company department');
+
+-- Age Statuses
+INSERT INTO age_statuses (status_name, description) VALUES
+('NEW', 'Age status of item'),
+('OLD', 'Age status of item');
+
+-- =========================================================
+-- SAMPLE INVENTORY INSERT
+-- =========================================================
+INSERT INTO inventory (
+    inventory_no,
+    company_id,
+    category_id,
+    sub_category_id,
+    brand_id,
+    model,
+    item_description,
+    serial_number,
+    custodian_id,
+    department_id,
+    mac_address,
+    device_name,
+    current_os,
+    device_age_months,
+    age_status_id,
+    purchase_date,
+    remarks
+)
+VALUES (
+    'NCIA-0001',
+    (SELECT company_id FROM companies WHERE company_name = 'NCIA'),
+    (SELECT category_id FROM categories WHERE category_name = 'HARDWARE'),
+    (SELECT sub_category_id FROM sub_categories WHERE sub_category_name = 'LAPTOP'),
+    (SELECT brand_id FROM brands WHERE brand_name = 'DELL'),
+    'INSPIRON 15 3000',
+    'Processor: i3 7th Gen
+RAM: 12 GB
+Storage HDD: 1 TB
+Storage SDD: 250 GB
+w+ charger',
+    'J1JF5P2',
+    (SELECT custodian_id FROM custodians WHERE custodian_name = 'TBD'),
+    (SELECT department_id FROM departments WHERE department_name = 'I.T (Information Technology)'),
+    '20-BD-1D-83-D6-B4',
+    'LAPTOP-PC-FJRABAD',
+    'WINDOW 11',
+    126,
+    (SELECT age_status_id FROM age_statuses WHERE status_name = 'OLD'),
+    '2026-02-06',
+    'This is originally from ms Paula but was swapped
+PREVIOUS USER: JOSIE RUANES'
+);
+
+-- =========================================================
+-- OPTIONAL VIEW FOR EASY REPORTING
+-- =========================================================
+CREATE OR REPLACE VIEW vw_inventory_details AS
+SELECT
+    i.inventory_id,
+    i.inventory_no,
+    c.company_name,
+    cat.category_name,
+    sc.sub_category_name,
+    b.brand_name,
+    i.model,
+    i.item_description,
+    i.serial_number,
+    cu.custodian_name AS assigned_to,
+    d.department_name,
+    i.mac_address,
+    i.device_name,
+    i.current_os,
+    i.device_age_months,
+    ag.status_name AS age_status,
+    i.purchase_date,
+    i.purchase_month,
+    i.purchase_year,
+    i.remarks,
+    i.status,
+    i.created_at,
+    i.updated_at
+FROM inventory i
+JOIN companies c        ON i.company_id = c.company_id
+JOIN categories cat     ON i.category_id = cat.category_id
+JOIN sub_categories sc  ON i.sub_category_id = sc.sub_category_id
+JOIN brands b           ON i.brand_id = b.brand_id
+LEFT JOIN custodians cu ON i.custodian_id = cu.custodian_id
+LEFT JOIN departments d ON i.department_id = d.department_id
+LEFT JOIN age_statuses ag ON i.age_status_id = ag.age_status_id;
