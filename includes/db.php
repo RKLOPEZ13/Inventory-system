@@ -4,7 +4,7 @@
 // Usage: require_once __DIR__ . '/db.php'; then use $pdo
 
 define('DB_HOST', 'localhost');
-define('DB_NAME', 'assettrack_db');
+define('DB_NAME', 'inventory_system');
 define('DB_USER', 'root');        // Change to your MySQL user
 define('DB_PASS', '');            // Change to your MySQL password
 define('DB_CHARSET', 'utf8mb4');
