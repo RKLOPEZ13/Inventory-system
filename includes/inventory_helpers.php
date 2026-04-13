@@ -388,6 +388,7 @@ function inventory_insert_items(PDO $pdo, array $source, int $requestedCount): a
     }
 
     $count = max(1, $requestedCount);
+
     $columns = array_merge(['inventory_no'], array_keys($payload));
     $placeholders = array_map(static fn (string $name): string => ':' . $name, $columns);
 

@@ -28,7 +28,15 @@ function inventory_api_handle_exception(Throwable $exception): void
 
     if ($exception instanceof PDOException && $exception->getCode() === '23000') {
         $statusCode = 422;
-        $message = 'The submitted inventory data conflicts with an existing record.';
+        $driverMessage = $exception->errorInfo[2] ?? $exception->getMessage();
+
+        if (stripos($driverMessage, 'uq_inventory_serial_number') !== false || stripos($driverMessage, 'serial_number') !== false) {
+            $message = 'Serial Number must be unique. The submitted serial number already exists.';
+        } elseif (stripos($driverMessage, 'uq_inventory_no') !== false || stripos($driverMessage, 'inventory_no') !== false) {
+            $message = 'Inventory Number already exists. Please try saving again.';
+        } else {
+            $message = 'The submitted inventory data conflicts with an existing record.';
+        }
     }
 
     inventory_api_respond([
@@ -36,4 +44,3 @@ function inventory_api_handle_exception(Throwable $exception): void
         'message' => $message,
     ], $statusCode);
 }
-

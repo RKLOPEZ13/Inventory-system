@@ -39,8 +39,8 @@
     --shadow: 0 10px 30px rgba(24,24,27,.06);
     --shadow-lg: 0 18px 40px rgba(24,24,27,.08);
     --transition: 180ms ease;
-    --font-main: 'Plus Jakarta Sans', system-ui, sans-serif;
-    --font-body: 'Inter', system-ui, sans-serif;
+    --font-main: 'Roboto', system-ui, sans-serif;
+    --font-body: 'Roboto', system-ui, sans-serif;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -622,32 +622,42 @@ button { cursor: pointer; font-family: var(--font-body); }
     letter-spacing: .04em;
     text-transform: uppercase;
     color: var(--text-muted);
-    border: 1px solid var(--border); /* Changed to full border */
+    border-top: 0;
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
     white-space: nowrap;
+    height: 44px;
+    box-sizing: border-box;
 }
 .data-table th:first-child { border-radius: var(--radius-lg) 0 0 0; }
 .data-table th:last-child { border-radius: 0 var(--radius-lg) 0 0; }
 
 .data-table td {
-    padding: 13px 16px;
-    border: 1px solid var(--border-light); /* Changed to full border */
+    padding: 9px 16px;
+    border-top: 0;
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 1px solid var(--border-light);
     color: var(--text-primary);
     vertical-align: middle;
+    background: var(--surface);
+    height: 44px;
+    box-sizing: border-box;
 }
 
 .data-table tr:last-child td { border-bottom: none; }
 
-/* Row striping for better scanability */
 .data-table tbody tr:nth-child(even) td {
-    background: var(--surface-2);
+    background: var(--surface);
 }
 
 .data-table tbody tr:hover td {
-    background: #f0f4f8;
+    background: var(--surface);
 }
 
 .data-table tbody tr:nth-child(even):hover td {
-    background: #e8ecf1;
+    background: var(--surface);
 }
 
 .data-table .col-actions {
@@ -1056,7 +1066,7 @@ button { cursor: pointer; font-family: var(--font-body); }
     overflow-x: auto;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    scrollbar-gutter: stable both-edges;
+    scrollbar-gutter: stable;
     flex: 1;
 }
 
@@ -1188,26 +1198,68 @@ button { cursor: pointer; font-family: var(--font-body); }
 }
 
 .inventory-action-btn {
-    min-width: 74px;
-    background: var(--primary-ghost); /* Soft red background */
-    color: var(--primary);            /* Red text */
-    border-color: transparent;        /* Remove the gray border */
+    min-width: 26px;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    background: var(--primary-ghost);
+    color: var(--primary);
+    border-color: transparent;
     font-weight: 700;
-    width: 100%;
     justify-content: center;
+    gap: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    flex: 0 0 auto;
+    transition: width 180ms ease, opacity 160ms ease, padding 180ms ease, gap 180ms ease, background 160ms ease, color 160ms ease, box-shadow 160ms ease;
 }
 
-/* Add a hover effect so it feels interactive */
-.inventory-action-btn:hover:not(:disabled) {
+.inventory-action-btn svg {
+    flex: 0 0 auto;
+}
+
+.inventory-action-label {
+    max-width: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-width 180ms ease, opacity 140ms ease;
+}
+
+.inventory-action-btn:hover:not(:disabled),
+.inventory-action-btn:focus-visible:not(:disabled) {
+    width: 86px;
+    padding: 0 12px;
+    gap: 8px;
     background: var(--primary);
     color: #ffffff;
     box-shadow: 0 4px 12px rgba(211, 19, 29, .2);
 }
 
+.inventory-action-btn:hover:not(:disabled) .inventory-action-label,
+.inventory-action-btn:focus-visible:not(:disabled) .inventory-action-label {
+    max-width: 48px;
+    opacity: 1;
+}
+
 .inventory-table .col-actions {
-    flex-direction: column;
-    align-items: stretch;
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
     gap: 8px;
+    min-width: 76px;
+}
+
+.inventory-table .col-actions:has(.inventory-action-btn:hover) .inventory-action-btn:not(:hover):not(:disabled),
+.inventory-table .col-actions:has(.inventory-action-btn:focus-visible) .inventory-action-btn:not(:focus-visible):not(:disabled) {
+    width: 0;
+    min-width: 0;
+    padding: 0;
+    border-width: 0;
+    opacity: 0;
+    margin: 0;
+    gap: 0;
+    pointer-events: none;
 }
 
 .inventory-table th:last-child,
@@ -1216,7 +1268,7 @@ button { cursor: pointer; font-family: var(--font-body); }
     right: 0;
     z-index: 3;
     background: var(--surface);
-    min-width: 124px;
+    min-width: 118px;
     border-left: 2px solid var(--border);
 }
 
@@ -1248,15 +1300,15 @@ button { cursor: pointer; font-family: var(--font-body); }
 
 /* Striping support for sticky last column */
 .data-table tbody tr:nth-child(even) td:last-child {
-    background: var(--surface-2);
+    background: var(--surface);
 }
 
 .data-table tbody tr:hover td:last-child {
-    background: #f0f4f8;
+    background: var(--surface);
 }
 
 .data-table tbody tr:nth-child(even):hover td:last-child {
-    background: #e8ecf1;
+    background: var(--surface);
 }
 
 .inventory-empty-cell {
