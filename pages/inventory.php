@@ -156,7 +156,7 @@ include '../includes/sidebar.php';
             <div>
                 <span class="inventory-modal-kicker">Inventory Form</span>
                 <h3 class="modal-title" id="inventoryItemModalTitle">Add Item</h3>
-                <p class="modal-subtext inventory-item-modal-subtext">Cleanly fill out the inventory details before saving this record.</p>
+                <p class="modal-subtext inventory-item-modal-subtext" id="inventoryItemModalSubtext">Cleanly fill out the inventory details before saving this record.</p>
             </div>
             <button class="modal-close-btn" type="button" onclick="closeModal('inventoryItemModal')">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -245,6 +245,7 @@ window.inventoryPageData = <?= json_encode([
     'filters' => $inventoryPageData['filters'],
     'lookups' => $inventoryPageData['lookups'],
     'formColumns' => $inventoryPageData['form_columns'],
+    'nextInventoryNo' => $inventoryPageData['next_inventory_no'],
     'config' => [
         'role' => $role,
         'canEdit' => $canEditInventory,

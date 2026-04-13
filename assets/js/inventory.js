@@ -9,6 +9,7 @@
     const formColumns = Array.isArray(pageData.formColumns) ? pageData.formColumns : [];
     const lookups = pageData.lookups || {};
     const config = pageData.config || {};
+    const nextInventoryNo = pageData.nextInventoryNo || '';
     const statusColorMap = {
         inventory_status_id: {
             STOLEN: { bg: '#fee2e2', fg: '#b91c1c' },
@@ -99,6 +100,7 @@
         itemFields: document.getElementById('inventoryItemFields'),
         itemIdInput: document.getElementById('inventoryItemId'),
         itemSubmitButton: document.getElementById('inventoryItemSubmitBtn'),
+        itemModalSubtext: document.getElementById('inventoryItemModalSubtext'),
         deployForm: document.getElementById('inventoryDeployForm'),
         deployInventoryId: document.getElementById('deployInventoryId'),
         deployCustodianId: document.getElementById('deployCustodianId'),
@@ -126,6 +128,28 @@
         return value == null ? '' : String(value);
     }
 
+    function parseInventoryNoMeta(value) {
+        const match = String(value || '').match(/^(.*?)(\d+)$/);
+        if (!match) {
+            return null;
+        }
+
+        return {
+            prefix: match[1],
+            sequence: Number(match[2]),
+            width: match[2].length,
+        };
+    }
+
+    function formatInventoryNoPreview(offset = 0) {
+        const meta = parseInventoryNoMeta(nextInventoryNo);
+        if (!meta) {
+            return nextInventoryNo || 'Auto-generated';
+        }
+
+        return `${meta.prefix}${String(meta.sequence + offset).padStart(meta.width, '0')}`;
+    }
+
     function getColumnLabel(columnName) {
         return columnLabels[columnName] || columnName.replace(/_/g, ' ').toUpperCase();
     }
@@ -149,7 +173,7 @@
 
     function getCompactValue(columnName, value) {
         const displayValue = getDisplayValue(columnName, value);
-        if (columnName !== 'item_description') {
+        if (!['item_description', 'remarks'].includes(columnName)) {
             return displayValue;
         }
 
@@ -336,12 +360,8 @@
             classNames.push('inventory-cell-empty');
         }
 
-        if (columnName === 'item_description') {
+        if (columnName === 'item_description' || columnName === 'remarks') {
             classNames.push('inventory-cell-preview');
-        }
-
-        if (columnName === 'remarks') {
-            classNames.push('inventory-cell-long');
         }
 
         if ((!lookupLabelMaps[columnName] && /_id$/.test(columnName)) || ['inventory_no', 'serial_number', 'mac_address'].includes(columnName)) {
@@ -406,7 +426,7 @@
                         </span>
                     `;
                 } else if (resolvedValue !== '') {
-                    if (column.name === 'item_description') {
+                    if (column.name === 'item_description' || column.name === 'remarks') {
                         displayValue = `
                             <span class="inventory-cell-tooltip" tabindex="0" data-tooltip="${escapeHtml(resolvedValue)}">                                
                               ${escapeHtml(getCompactValue(column.name, value))}
@@ -537,6 +557,26 @@
         renderBody(filteredItems);
         renderSummary(filteredItems);
         renderPagination(filteredItems);
+        initializeTableKeyboardSupport();
+    }
+
+    function initializeTableKeyboardSupport() {
+        const scrollContainer = document.querySelector('.inventory-table-scroll');
+        if (!scrollContainer) return;
+
+        // Check if table overflows horizontally
+        const isScrollable = scrollContainer.scrollWidth > scrollContainer.clientWidth;
+        
+        // Set tabindex only if scrollable
+        if (isScrollable) {
+            scrollContainer.setAttribute('tabindex', '0');
+            scrollContainer.setAttribute('role', 'region');
+            scrollContainer.setAttribute('aria-label', 'Inventory table, use arrow keys to scroll');
+        } else {
+            scrollContainer.removeAttribute('tabindex');
+            scrollContainer.removeAttribute('role');
+            scrollContainer.removeAttribute('aria-label');
+        }
     }
 
     function lookupOptionsHtml(columnName, selectedValue, includeEmptyOption) {
@@ -553,12 +593,54 @@
         }).join('');
     }
 
-    function inputFieldHtml(column, item) {
+    function bulkCountFieldHtml() {
+        return `
+            <div class="form-col">
+                <label class="label" for="field_bulk_count">NUMBER OF ENTRIES</label>
+                <input
+                    class="input"
+                    id="field_bulk_count"
+                    name="bulk_count"
+                    type="number"
+                    value="1"
+                    min="1"
+                    step="1"
+                    inputmode="numeric"
+                >
+                <div class="field-note">Add several identical inventory records in one save.</div>
+            </div>
+        `;
+    }
+
+    function inputFieldHtml(column, item, mode) {
         const value = item ? item[column.name] : '';
         const required = column.required ? 'required' : '';
-        const fullWidth = ['item_description', 'remarks', 'inventory_no', 'device_name', 'mac_address'].includes(column.name) ? 'form-full' : '';
+        const fullWidth = ['item_description', 'remarks', 'device_name', 'mac_address'].includes(column.name) ? 'form-full' : '';
         const label = escapeHtml(getColumnLabel(column.name));
         const name = escapeHtml(column.name);
+
+        if (column.name === 'inventory_no') {
+            const displayValue = mode === 'update' ? normalizeValue(value) : formatInventoryNoPreview(0);
+            const note = mode === 'update'
+                ? 'Auto-generated inventory number. This value cannot be changed.'
+                : 'Auto-generated on save and kept sequential automatically.';
+
+            return `
+                <div class="form-col">
+                    <label class="label" for="field_${name}">${label}</label>
+                    <input
+                        class="input"
+                        id="field_${name}"
+                        name="${name}"
+                        type="text"
+                        value="${escapeHtml(displayValue)}"
+                        readonly
+                        tabindex="-1"
+                    >
+                    <div class="field-note" id="field_${name}_note">${escapeHtml(note)}</div>
+                </div>
+            `;
+        }
 
         if (column.name === 'device_age_months') {
             const calculatedValue = item ? calculateDeviceAgeMonthsFromDate(item.purchase_date) : '';
@@ -631,6 +713,26 @@
         `;
     }
 
+    function buildItemFieldsHtml(mode, item) {
+        const fields = [];
+        let bulkInserted = false;
+
+        formColumns.forEach((column) => {
+            fields.push(inputFieldHtml(column, item, mode));
+
+            if (mode === 'add' && column.name === 'inventory_no') {
+                fields.push(bulkCountFieldHtml());
+                bulkInserted = true;
+            }
+        });
+
+        if (mode === 'add' && !bulkInserted) {
+            fields.unshift(bulkCountFieldHtml());
+        }
+
+        return fields.join('');
+    }
+
     function fillItemForm(mode, inventoryId) {
         const item = mode === 'update'
             ? items.find((entry) => Number(entry.inventory_id) === Number(inventoryId))
@@ -639,8 +741,13 @@
         state.itemModalMode = mode;
         elements.itemModalTitle.textContent = mode === 'update' ? 'Update Item' : 'Add Item';
         elements.itemSubmitButton.textContent = mode === 'update' ? 'Update Item' : 'Add Item';
+        if (elements.itemModalSubtext) {
+            elements.itemModalSubtext.textContent = mode === 'update'
+                ? 'Review and update the selected inventory record.'
+                : 'Fill out the item once, then choose how many identical entries to create.';
+        }
         elements.itemIdInput.value = item ? item.inventory_id : '';
-        elements.itemFields.innerHTML = formColumns.map((column) => inputFieldHtml(column, item)).join('');
+        elements.itemFields.innerHTML = buildItemFieldsHtml(mode, item);
         syncItemFormDerivedFields();
     }
 
@@ -659,6 +766,23 @@
         const deviceAgeField = document.getElementById('field_device_age_months');
         const ageStatusField = document.getElementById('field_age_status_id');
         const ageStatusDisplayField = document.getElementById('field_age_status_id_display');
+        const inventoryNoField = document.getElementById('field_inventory_no');
+        const inventoryNoNote = document.getElementById('field_inventory_no_note');
+        const bulkCountField = document.getElementById('field_bulk_count');
+
+        if (inventoryNoField && state.itemModalMode === 'add') {
+            const bulkCount = Math.max(1, Number(bulkCountField?.value) || 1);
+            const startInventoryNo = formatInventoryNoPreview(0);
+            const endInventoryNo = formatInventoryNoPreview(bulkCount - 1);
+
+            inventoryNoField.value = startInventoryNo;
+
+            if (inventoryNoNote) {
+                inventoryNoNote.textContent = bulkCount > 1
+                    ? `Auto-generated on save from ${startInventoryNo} to ${endInventoryNo}.`
+                    : `Auto-generated on save as ${startInventoryNo}.`;
+            }
+        }
 
         if (!purchaseDateField || !deviceAgeField) {
             return;
@@ -966,11 +1090,18 @@
             const inventoryId = formData.get('inventory_id');
             if (!inventoryId) {
                 formData.delete('inventory_id');
+            } else {
+                formData.delete('bulk_count');
             }
 
             const originalText = elements.itemSubmitButton.textContent;
+            const bulkCount = Math.max(1, Number(formData.get('bulk_count')) || 1);
             elements.itemSubmitButton.disabled = true;
-            elements.itemSubmitButton.textContent = state.itemModalMode === 'update' ? 'Updating...' : 'Saving...';
+            elements.itemSubmitButton.textContent = state.itemModalMode === 'update'
+                ? 'Updating...'
+                : bulkCount > 1
+                    ? 'Saving Items...'
+                    : 'Saving...';
 
             try {
                 const result = await postForm(config.saveEndpoint, formData);
@@ -990,7 +1121,7 @@
                 return;
             }
 
-            if (target.name === 'purchase_date') {
+            if (target.name === 'purchase_date' || target.name === 'bulk_count') {
                 syncItemFormDerivedFields();
             }
         });

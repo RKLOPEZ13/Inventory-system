@@ -636,7 +636,19 @@ button { cursor: pointer; font-family: var(--font-body); }
 }
 
 .data-table tr:last-child td { border-bottom: none; }
-.data-table tr:hover td { background: var(--bg); }
+
+/* Row striping for better scanability */
+.data-table tbody tr:nth-child(even) td {
+    background: var(--surface-2);
+}
+
+.data-table tbody tr:hover td {
+    background: #f0f4f8;
+}
+
+.data-table tbody tr:nth-child(even):hover td {
+    background: #e8ecf1;
+}
 
 .data-table .col-actions {
     display: flex; gap: 6px; align-items: center;
@@ -1034,19 +1046,30 @@ button { cursor: pointer; font-family: var(--font-body); }
 
 .inventory-table-wrap {
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    max-height: 600px;
 }
 
 .inventory-table-scroll {
     overflow-x: auto;
-    overflow-y: visible; /* <-- Changed from 'hidden' so tooltips can escape */
+    overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-gutter: stable both-edges;
+    flex: 1;
 }
 
 .inventory-table {
     min-width: max-content;
-    border-collapse: separate; /* <-- Overrides 'collapse' for better sticky behavior */
-    border-spacing: 0;         /* <-- Keeps it looking identical to collapse */
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.inventory-table th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
 }
 
 .inventory-table th,
@@ -1194,14 +1217,15 @@ button { cursor: pointer; font-family: var(--font-body); }
     z-index: 3;
     background: var(--surface);
     min-width: 124px;
-    border-left: 2px solid var(--border); /* <-- ADD THIS: Creates a hard visual break */
+    border-left: 2px solid var(--border);
 }
 
 .inventory-table thead th:last-child {
-    z-index: 5;
+    z-index: 11; /* Higher z-index to stay above sticky headers */
     background: var(--surface-2);
 }
 
+/* Enhanced sticky column shadow effect */
 .inventory-table th:last-child::before,
 .inventory-table td:last-child::before {
     content: '';
@@ -1219,12 +1243,24 @@ button { cursor: pointer; font-family: var(--font-body); }
 }
 
 .inventory-table td:last-child {
-    /* Slightly stronger shadow for depth */
     box-shadow: -8px 0 16px rgba(24, 24, 27, .08); 
 }
 
+/* Striping support for sticky last column */
+.data-table tbody tr:nth-child(even) td:last-child {
+    background: var(--surface-2);
+}
+
+.data-table tbody tr:hover td:last-child {
+    background: #f0f4f8;
+}
+
+.data-table tbody tr:nth-child(even):hover td:last-child {
+    background: #e8ecf1;
+}
+
 .inventory-empty-cell {
-    text-align: center;
+    text-align: left;
     padding: 36px 20px;
     color: var(--text-muted);
     position: static !important;
@@ -1234,6 +1270,30 @@ button { cursor: pointer; font-family: var(--font-body); }
 .inventory-pagination {
     gap: 16px;
     flex-wrap: wrap;
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+}
+
+/* Scroll hint message for keyboard users */
+.inventory-table-scroll[tabindex="0"] {
+    outline: none;
+    position: relative;
+}
+
+.inventory-scroll-hint {
+    margin-top: 10px;
+    padding: 8px 12px;
+    font-size: .75rem;
+    color: var(--text-muted);
+    background: var(--bg);
+    border-radius: 6px;
+    text-align: center;
+    display: none;
+}
+
+.inventory-table-scroll[tabindex="0"] .inventory-scroll-hint {
+    display: block;
 }
 
 .inventory-form-grid .form-col {

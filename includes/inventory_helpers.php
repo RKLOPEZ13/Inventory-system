@@ -100,6 +100,48 @@ function inventory_virtual_columns(): array
     ];
 }
 
+function inventory_inventory_no_prefix(): string
+{
+    return 'NCIA-';
+}
+
+function inventory_format_inventory_no(int $sequence): string
+{
+    return sprintf('%s%04d', inventory_inventory_no_prefix(), $sequence);
+}
+
+function inventory_current_max_inventory_sequence(PDO $pdo, bool $lock = false): int
+{
+    $prefix = inventory_inventory_no_prefix();
+    $pattern = '^' . preg_quote($prefix, '/') . '[0-9]+$';
+    $sequenceStart = strlen($prefix) + 1;
+
+    $sql = sprintf(
+        'SELECT inventory_no
+         FROM inventory
+         WHERE inventory_no REGEXP :pattern
+         ORDER BY CAST(SUBSTRING(inventory_no, %d) AS UNSIGNED) DESC, inventory_id DESC
+         LIMIT 1%s',
+        $sequenceStart,
+        $lock ? ' FOR UPDATE' : ''
+    );
+
+    $statement = $pdo->prepare($sql);
+    $statement->execute(['pattern' => $pattern]);
+    $inventoryNo = $statement->fetchColumn();
+
+    if (!is_string($inventoryNo) || !preg_match('/(\d+)$/', $inventoryNo, $matches)) {
+        return 0;
+    }
+
+    return max(0, (int) $matches[1]);
+}
+
+function inventory_next_inventory_no(PDO $pdo): string
+{
+    return inventory_format_inventory_no(inventory_current_max_inventory_sequence($pdo) + 1);
+}
+
 function inventory_schema_columns(PDO $pdo): array
 {
     static $cache = null;
@@ -297,6 +339,10 @@ function inventory_prepare_payload(PDO $pdo, array $source): array
             continue;
         }
 
+        if ($name === 'inventory_no') {
+            continue;
+        }
+
         $rawValue = $source[$name] ?? null;
         $value = is_string($rawValue) ? trim($rawValue) : $rawValue;
 
@@ -330,13 +376,19 @@ function inventory_prepare_payload(PDO $pdo, array $source): array
 
 function inventory_insert_item(PDO $pdo, array $source): array
 {
+    return inventory_insert_items($pdo, $source, 1);
+}
+
+function inventory_insert_items(PDO $pdo, array $source, int $requestedCount): array
+{
     [$payload, $errors] = inventory_prepare_payload($pdo, $source);
 
     if ($errors) {
         return ['success' => false, 'message' => implode(' ', $errors)];
     }
 
-    $columns = array_keys($payload);
+    $count = max(1, $requestedCount);
+    $columns = array_merge(['inventory_no'], array_keys($payload));
     $placeholders = array_map(static fn (string $name): string => ':' . $name, $columns);
 
     $sql = sprintf(
@@ -346,12 +398,45 @@ function inventory_insert_item(PDO $pdo, array $source): array
     );
 
     $statement = $pdo->prepare($sql);
-    $statement->execute($payload);
+    $createdIds = [];
+    $firstInventoryNo = null;
+    $lastInventoryNo = null;
+
+    try {
+        $pdo->beginTransaction();
+        $nextSequence = inventory_current_max_inventory_sequence($pdo, true) + 1;
+
+        for ($offset = 0; $offset < $count; $offset += 1) {
+            $inventoryNo = inventory_format_inventory_no($nextSequence + $offset);
+            $insertPayload = array_merge(['inventory_no' => $inventoryNo], $payload);
+
+            $statement->execute($insertPayload);
+            $createdIds[] = (int) $pdo->lastInsertId();
+
+            $firstInventoryNo ??= $inventoryNo;
+            $lastInventoryNo = $inventoryNo;
+        }
+
+        $pdo->commit();
+    } catch (Throwable $exception) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+
+        throw $exception;
+    }
+
+    $message = $count === 1
+        ? 'Item added successfully.'
+        : sprintf('%d items added successfully.', $count);
 
     return [
         'success' => true,
-        'message' => 'Item added successfully.',
-        'inventory_id' => (int) $pdo->lastInsertId(),
+        'message' => $message,
+        'inventory_id' => $createdIds[0] ?? null,
+        'inventory_ids' => $createdIds,
+        'inventory_no' => $firstInventoryNo,
+        'inventory_no_last' => $lastInventoryNo,
     ];
 }
 
@@ -526,5 +611,6 @@ function inventory_page_payload(PDO $pdo): array
         'filters' => inventory_lookup_options($pdo, inventory_filter_columns()),
         'lookups' => $lookups,
         'form_columns' => inventory_form_columns($pdo),
+        'next_inventory_no' => inventory_next_inventory_no($pdo),
     ];
 }
