@@ -74,7 +74,6 @@
             category_id: '',
             sub_category_id: '',
             inventory_status_id: '',
-            deployment_status_id: '',
         },
         visibleColumns: new Set(columns.map((column) => column.name)),
         itemModalMode: 'add',
@@ -1114,6 +1113,7 @@
             Object.keys(state.filters).forEach((key) => {
                 state.filters[key] = '';
             });
+            state.visibleColumns = new Set(columns.map((column) => column.name));
 
             if (elements.searchInput) {
                 elements.searchInput.value = '';
@@ -1123,6 +1123,7 @@
                 select.value = '';
             });
 
+            renderColumnOptions();
             renderTable();
         });
 

@@ -68,7 +68,28 @@ function inventory_filter_columns(): array
         'category_id',
         'sub_category_id',
         'inventory_status_id',
+    ];
+}
+
+function inventory_hidden_table_columns(): array
+{
+    return [
+        'custodian_id',
+        'department_id',
         'deployment_status_id',
+        'deployed_date',
+        'returned_date',
+    ];
+}
+
+function inventory_hidden_form_columns(): array
+{
+    return [
+        'custodian_id',
+        'department_id',
+        'deployment_status_id',
+        'deployed_date',
+        'returned_date',
     ];
 }
 
@@ -306,9 +327,21 @@ function inventory_find_item(PDO $pdo, int $inventoryId): ?array
 
 function inventory_form_columns(PDO $pdo): array
 {
+    $hiddenColumns = array_flip(inventory_hidden_form_columns());
+
     return array_values(array_filter(
         inventory_schema_columns($pdo),
-        static fn (array $column): bool => !$column['readonly']
+        static fn (array $column): bool => !$column['readonly'] && !isset($hiddenColumns[$column['name']])
+    ));
+}
+
+function inventory_page_columns(PDO $pdo): array
+{
+    $hiddenColumns = array_flip(inventory_hidden_table_columns());
+
+    return array_values(array_filter(
+        inventory_schema_columns($pdo),
+        static fn (array $column): bool => !isset($hiddenColumns[$column['name']])
     ));
 }
 
@@ -633,7 +666,7 @@ function inventory_deploy_item(PDO $pdo, array $source, int $userId = 1): array
 
 function inventory_page_payload(PDO $pdo): array
 {
-    $columns = inventory_schema_columns($pdo);
+    $columns = inventory_page_columns($pdo);
     $items = inventory_items($pdo);
     $lookups = inventory_lookup_options($pdo);
 

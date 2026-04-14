@@ -91,13 +91,6 @@ function closeModal(id) {
     if (el) el.classList.remove('active');
 }
 
-// Close modal on overlay click
-document.addEventListener('click', (e) => {
-    if (e.target.classList.contains('modal-overlay')) {
-        e.target.classList.remove('active');
-    }
-});
-
 // Close on Escape
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {

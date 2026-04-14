@@ -100,14 +100,6 @@ include '../includes/sidebar.php';
                     <?php endforeach; ?>
                 </select>
 
-                <label class="label sr-only" for="deploymentStatusFilter">Deployment Status</label>
-                <select class="select inventory-filter-select inventory-filter-pill" id="deploymentStatusFilter" data-filter-column="deployment_status_id">
-                    <option value="">All Deployment Status</option>
-                    <?php foreach ($inventoryPageData['filters']['deployment_status_id'] as $option): ?>
-                        <option value="<?= htmlspecialchars((string) $option['option_value']) ?>"><?= htmlspecialchars($option['option_label']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-
                 <div class="inventory-filter-row-end">
                     <div class="inventory-column-filter">
                         <button class="btn btn-secondary" id="inventoryColumnToggle" type="button" aria-expanded="false" aria-controls="inventoryColumnPanel">
