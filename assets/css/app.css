@@ -1255,14 +1255,14 @@ button { cursor: pointer; font-family: var(--font-body); }
 }
 
 .inventory-column-name {
-    font-family: Consolas, monospace;
+    font-family: var(--font-body);
     font-size: .74rem;
     letter-spacing: 0;
     text-transform: none;
 }
 
 .inventory-cell-code {
-    font-family: Consolas, monospace;
+    font-family: var(--font-body);
     font-size: .81rem;
 }
 
