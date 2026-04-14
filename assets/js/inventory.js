@@ -10,6 +10,7 @@
     const lookups = pageData.lookups || {};
     const config = pageData.config || {};
     const nextInventoryNo = pageData.nextInventoryNo || '';
+    const currentUserName = pageData.currentUserName || 'System Admin';
     const statusColorMap = {
         inventory_status_id: {
             STOLEN: { bg: '#fee2e2', fg: '#b91c1c' },
@@ -77,6 +78,8 @@
         },
         visibleColumns: new Set(columns.map((column) => column.name)),
         itemModalMode: 'add',
+        deploySearch: '',
+        selectedDeployInventoryId: '',
     };
 
     const elements = {
@@ -102,13 +105,16 @@
         itemSubmitButton: document.getElementById('inventoryItemSubmitBtn'),
         itemModalSubtext: document.getElementById('inventoryItemModalSubtext'),
         deployForm: document.getElementById('inventoryDeployForm'),
+        deploySearchShell: document.getElementById('deploySearchShell'),
+        deploySearchInput: document.getElementById('deployInventorySearch'),
+        deployResults: document.getElementById('deployInventoryResults'),
+        deploySelectedItem: document.getElementById('deploySelectedItem'),
         deployInventoryId: document.getElementById('deployInventoryId'),
         deployCustodianId: document.getElementById('deployCustodianId'),
         deployDepartmentId: document.getElementById('deployDepartmentId'),
-        deployInventoryStatusId: document.getElementById('deployInventoryStatusId'),
         deployDeploymentStatusId: document.getElementById('deployDeploymentStatusId'),
         deployDate: document.getElementById('deployDate'),
-        deployReturnedDate: document.getElementById('deployReturnedDate'),
+        deployProcessedBy: document.getElementById('deployProcessedBy'),
     };
 
     function escapeHtml(value) {
@@ -818,6 +824,65 @@
         return parts.join(' | ');
     }
 
+    function todayAsInputDate() {
+        const now = new Date();
+        const offset = now.getTimezoneOffset();
+        return new Date(now.getTime() - (offset * 60000)).toISOString().slice(0, 10);
+    }
+
+    function getDeploySearchText(item) {
+        return [
+            item.inventory_no,
+            getDisplayValue('company_id', item.company_id),
+            getDisplayValue('category_id', item.category_id),
+            getDisplayValue('sub_category_id', item.sub_category_id),
+            getDisplayValue('brand_id', item.brand_id),
+            item.model,
+            item.serial_number,
+            item.device_name,
+            getDisplayValue('inventory_status_id', item.inventory_status_id),
+        ].filter(Boolean).join(' ').toLowerCase();
+    }
+
+    function getDeploySearchResults() {
+        const search = state.deploySearch.trim().toLowerCase();
+        const matchingItems = search
+            ? items.filter((item) => getDeploySearchText(item).includes(search))
+            : items;
+
+        return matchingItems.slice(0, 8);
+    }
+
+    function deployResultCells(item) {
+        const ageDetails = getDeviceAgeDetails(item);
+        const ageStatus = getAgeStatusMeta(item);
+        const inventoryStatusLabel = getDisplayValue('inventory_status_id', item.inventory_status_id);
+        const inventoryStatusStyle = getStatusBadgeStyle('inventory_status_id', inventoryStatusLabel);
+
+        return `
+            <td class="inventory-cell-code">${escapeHtml(item.inventory_no || '')}</td>
+            <td>${escapeHtml(getDisplayValue('company_id', item.company_id) || '—')}</td>
+            <td>${escapeHtml(getDisplayValue('category_id', item.category_id) || '—')}</td>
+            <td>${escapeHtml(getDisplayValue('sub_category_id', item.sub_category_id) || '—')}</td>
+            <td>${escapeHtml(getDisplayValue('brand_id', item.brand_id) || '—')}</td>
+            <td>${escapeHtml(item.model || '—')}</td>
+            <td class="inventory-cell-code">${escapeHtml(item.serial_number || '—')}</td>
+            <td>
+                <div class="inventory-age-cell inventory-age-cell-${Number(ageDetails.badge) >= 60 ? 'old' : 'new'}">
+                    <span class="inventory-age-text">${escapeHtml(ageDetails.text)}</span>
+                </div>
+            </td>
+            <td><span class="inventory-plain-status">${escapeHtml(ageStatus.label)}</span></td>
+            <td>
+                ${inventoryStatusLabel ? `
+                    <span class="inventory-status-badge" style="--status-bg:${escapeHtml(inventoryStatusStyle.bg)};--status-fg:${escapeHtml(inventoryStatusStyle.fg)};">
+                        ${escapeHtml(inventoryStatusLabel)}
+                    </span>
+                ` : '&mdash;'}
+            </td>
+        `;
+    }
+
     function fillDeploySelect(selectElement, columnName, includeEmptyOption) {
         if (!selectElement) {
             return;
@@ -826,34 +891,91 @@
         selectElement.innerHTML = lookupOptionsHtml(columnName, '', includeEmptyOption);
     }
 
-    function renderDeployInventoryOptions(selectedId) {
-        if (!elements.deployInventoryId) {
+    function deploySelectedSummary(item) {
+        if (!item) {
+            return 'No inventory item selected yet.';
+        }
+
+        const detailParts = [
+            item.inventory_no,
+            getDisplayValue('company_id', item.company_id),
+            item.model,
+            item.serial_number,
+        ].filter(Boolean);
+
+        return `Selected item: ${detailParts.join(' | ')}`;
+    }
+
+    function setDefaultDeploymentStatus() {
+        if (!elements.deployDeploymentStatusId) {
             return;
         }
 
-        const options = ['<option value="">Select inventory item</option>'].concat(
-            items.map((item) => `
-                <option value="${item.inventory_id}" ${Number(selectedId) === Number(item.inventory_id) ? 'selected' : ''}>
-                    ${escapeHtml(inventoryLabel(item))}
-                </option>
-            `)
-        );
+        const deployedOption = (Array.isArray(lookups.deployment_status_id) ? lookups.deployment_status_id : [])
+            .find((option) => String(option.option_label).trim().toUpperCase() === 'DEPLOYED');
 
-        elements.deployInventoryId.innerHTML = options.join('');
+        elements.deployDeploymentStatusId.value = deployedOption
+            ? normalizeValue(deployedOption.option_value)
+            : '';
+    }
+
+    function renderDeployResults() {
+        if (!elements.deployResults) {
+            return;
+        }
+
+        const results = getDeploySearchResults();
+
+        if (!results.length) {
+            elements.deployResults.innerHTML = `
+                <tr>
+                    <td colspan="10" class="inventory-empty-cell">No inventory items match your search.</td>
+                </tr>
+            `;
+            return;
+        }
+
+        elements.deployResults.innerHTML = results.map((item) => `
+            <tr class="inventory-deploy-result-row ${Number(state.selectedDeployInventoryId) === Number(item.inventory_id) ? 'is-selected' : ''}" data-id="${item.inventory_id}">
+                ${deployResultCells(item)}
+            </tr>
+        `).join('');
     }
 
     function syncDeployFormToItem(inventoryId) {
         const item = items.find((entry) => Number(entry.inventory_id) === Number(inventoryId));
+
+        state.selectedDeployInventoryId = item ? normalizeValue(item.inventory_id) : '';
+
+        if (elements.deployInventoryId) {
+            elements.deployInventoryId.value = state.selectedDeployInventoryId;
+        }
+
         if (!item) {
+            state.deploySearch = '';
+            if (elements.deploySelectedItem) {
+                elements.deploySelectedItem.textContent = deploySelectedSummary(null);
+            }
+            renderDeployResults();
             return;
+        }
+
+        state.deploySearch = inventoryLabel(item);
+
+        if (elements.deploySelectedItem) {
+            elements.deploySelectedItem.textContent = deploySelectedSummary(item);
+        }
+
+        if (elements.deploySearchInput) {
+            elements.deploySearchInput.value = inventoryLabel(item);
         }
 
         elements.deployCustodianId.value = normalizeValue(item.custodian_id);
         elements.deployDepartmentId.value = normalizeValue(item.department_id);
-        elements.deployInventoryStatusId.value = normalizeValue(item.inventory_status_id);
-        elements.deployDeploymentStatusId.value = normalizeValue(item.deployment_status_id);
-        elements.deployDate.value = normalizeValue(item.deployed_date);
-        elements.deployReturnedDate.value = normalizeValue(item.returned_date);
+        if (!elements.deployDeploymentStatusId.value) {
+            setDefaultDeploymentStatus();
+        }
+        renderDeployResults();
     }
 
     function openDeployModal() {
@@ -862,13 +984,28 @@
             return;
         }
 
-        renderDeployInventoryOptions('');
         fillDeploySelect(elements.deployCustodianId, 'custodian_id', true);
         fillDeploySelect(elements.deployDepartmentId, 'department_id', true);
-        fillDeploySelect(elements.deployInventoryStatusId, 'inventory_status_id', false);
         fillDeploySelect(elements.deployDeploymentStatusId, 'deployment_status_id', false);
-        elements.deployDate.value = '';
-        elements.deployReturnedDate.value = '';
+        state.deploySearch = '';
+        state.selectedDeployInventoryId = '';
+        if (elements.deploySearchInput) {
+            elements.deploySearchInput.value = '';
+        }
+        if (elements.deployInventoryId) {
+            elements.deployInventoryId.value = '';
+        }
+        if (elements.deployDate) {
+            elements.deployDate.value = todayAsInputDate();
+        }
+        if (elements.deployProcessedBy) {
+            elements.deployProcessedBy.value = currentUserName;
+        }
+        setDefaultDeploymentStatus();
+        if (elements.deploySelectedItem) {
+            elements.deploySelectedItem.textContent = deploySelectedSummary(null);
+        }
+        renderDeployResults();
         openModal('inventoryDeployModal');
     }
 
@@ -1031,6 +1168,10 @@
             if (!elements.columnFilter?.contains(event.target)) {
                 closeColumnPanel();
             }
+
+            if (!elements.deploySearchShell?.contains(event.target)) {
+                elements.deploySearchShell?.classList.remove('open');
+            }
         });
 
         elements.pagination?.addEventListener('click', (event) => {
@@ -1126,12 +1267,36 @@
             }
         });
 
-        elements.deployInventoryId?.addEventListener('change', (event) => {
-            syncDeployFormToItem(event.target.value);
+        elements.deploySearchInput?.addEventListener('focus', () => {
+            elements.deploySearchShell?.classList.add('open');
+            renderDeployResults();
+        });
+
+        elements.deploySearchInput?.addEventListener('input', (event) => {
+            state.deploySearch = event.target.value;
+            elements.deploySearchShell?.classList.add('open');
+            renderDeployResults();
+        });
+
+        elements.deployResults?.addEventListener('click', (event) => {
+            const row = event.target instanceof HTMLElement ? event.target.closest('.inventory-deploy-result-row') : null;
+            if (!(row instanceof HTMLTableRowElement)) {
+                return;
+            }
+
+            syncDeployFormToItem(row.dataset.id);
+            elements.deploySearchShell?.classList.remove('open');
         });
 
         elements.deployForm?.addEventListener('submit', async (event) => {
             event.preventDefault();
+
+            if (!elements.deployInventoryId?.value) {
+                showToast('Select an inventory item before deploying.', 'info');
+                elements.deploySearchInput?.focus();
+                elements.deploySearchShell?.classList.add('open');
+                return;
+            }
 
             const submitButton = elements.deployForm.querySelector('button[type="submit"]');
             const originalText = submitButton ? submitButton.textContent : 'Deploy Item';

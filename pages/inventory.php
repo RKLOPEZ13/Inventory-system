@@ -179,11 +179,12 @@ include '../includes/sidebar.php';
 </div>
 
 <div class="modal-overlay" id="inventoryDeployModal">
-    <div class="modal">
-        <div class="modal-header">
+    <div class="modal modal-wide inventory-deploy-modal">
+        <div class="modal-header inventory-deploy-modal-header">
             <div>
+                <span class="inventory-modal-kicker">Deployment</span>
                 <h3 class="modal-title">Deploy Item</h3>
-                <p class="modal-subtext">Update deployment details for an inventory record.</p>
+                <p class="modal-subtext">Search and select one inventory item, then complete the deployment details.</p>
             </div>
             <button class="modal-close-btn" type="button" onclick="closeModal('inventoryDeployModal')">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -192,41 +193,81 @@ include '../includes/sidebar.php';
             </button>
         </div>
 
-        <form id="inventoryDeployForm">
-            <div class="form-row">
-                <div class="form-col form-full">
-                    <label class="label" for="deployInventoryId">Inventory Item</label>
-                    <select class="select" id="deployInventoryId" name="inventory_id" required></select>
+        <form id="inventoryDeployForm" class="inventory-deploy-form">
+            <input type="hidden" id="deployInventoryId" name="inventory_id" required>
+
+            <div class="inventory-deploy-search-shell" id="deploySearchShell">
+                <label class="label" for="deployInventorySearch">Search Inventory Item</label>
+                <div class="inventory-search-field inventory-deploy-search-field">
+                    <span class="inventory-search-icon" aria-hidden="true">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                    </span>
+                    <input
+                        type="search"
+                        class="input inventory-search-input"
+                        id="deployInventorySearch"
+                        autocomplete="off"
+                        placeholder="Search by inventory no., model, serial number, company, or brand"
+                    >
+                </div>
+                <div class="field-note">The list below updates as you type. Click a row to choose the item to deploy.</div>
+
+                <div class="inventory-deploy-picker" id="deployInventoryPicker">
+                    <div class="inventory-deploy-picker-scroll">
+                        <table class="data-table inventory-deploy-results">
+                            <thead>
+                                <tr>
+                                    <th>INVENTORY NO.</th>
+                                    <th>COMPANY</th>
+                                    <th>CATEGORY</th>
+                                    <th>SUB CATEGORY</th>
+                                    <th>BRAND</th>
+                                    <th>MODEL</th>
+                                    <th>SERIAL NUMBER</th>
+                                    <th>DEVICE AGE</th>
+                                    <th>AGE STATUS</th>
+                                    <th>INVENTORY STATUS</th>
+                                </tr>
+                            </thead>
+                            <tbody id="deployInventoryResults"></tbody>
+                        </table>
+                    </div>
                 </div>
 
-                <div class="form-col">
-                    <label class="label" for="deployCustodianId">Custodian</label>
-                    <select class="select" id="deployCustodianId" name="custodian_id"></select>
-                </div>
+                <div class="inventory-deploy-selected" id="deploySelectedItem">No inventory item selected yet.</div>
+            </div>
 
-                <div class="form-col">
-                    <label class="label" for="deployDepartmentId">Department</label>
-                    <select class="select" id="deployDepartmentId" name="department_id"></select>
-                </div>
+            <div class="inventory-item-form-shell inventory-deploy-form-shell">
+                <div class="form-row inventory-deploy-grid">
+                    <div class="form-col">
+                        <label class="label" for="deployCustodianId">Deploy To</label>
+                        <select class="select" id="deployCustodianId" name="custodian_id" required></select>
+                    </div>
 
-                <div class="form-col">
-                    <label class="label" for="deployInventoryStatusId">Inventory Status</label>
-                    <select class="select" id="deployInventoryStatusId" name="inventory_status_id" required></select>
-                </div>
+                    <div class="form-col">
+                        <label class="label" for="deployDepartmentId">Department</label>
+                        <select class="select" id="deployDepartmentId" name="department_id" required></select>
+                    </div>
 
-                <div class="form-col">
-                    <label class="label" for="deployDeploymentStatusId">Deployment Status</label>
-                    <select class="select" id="deployDeploymentStatusId" name="deployment_status_id" required></select>
-                </div>
+                    <div class="form-col">
+                        <label class="label" for="deployDeploymentStatusId">Deployment Status</label>
+                        <select class="select" id="deployDeploymentStatusId" name="deployment_status_id" required></select>
+                    </div>
 
-                <div class="form-col">
-                    <label class="label" for="deployDate">Deployed Date</label>
-                    <input class="input" id="deployDate" name="deployed_date" type="date">
-                </div>
+                    <div class="form-col">
+                        <label class="label" for="deployDate">Date Deployed</label>
+                        <input class="input" id="deployDate" name="deployed_date" type="date" readonly>
+                        <div class="field-note">Auto-set when this deployment is saved.</div>
+                    </div>
 
-                <div class="form-col">
-                    <label class="label" for="deployReturnedDate">Returned Date</label>
-                    <input class="input" id="deployReturnedDate" name="returned_date" type="date">
+                    <div class="form-col">
+                        <label class="label" for="deployProcessedBy">Deployed By</label>
+                        <input class="input" id="deployProcessedBy" type="text" readonly>
+                        <div class="field-note">Currently using the default placeholder user until session data is connected.</div>
+                    </div>
                 </div>
             </div>
 
@@ -246,6 +287,7 @@ window.inventoryPageData = <?= json_encode([
     'lookups' => $inventoryPageData['lookups'],
     'formColumns' => $inventoryPageData['form_columns'],
     'nextInventoryNo' => $inventoryPageData['next_inventory_no'],
+    'currentUserName' => inventory_default_actor_name($pdo),
     'config' => [
         'role' => $role,
         'canEdit' => $canEditInventory,

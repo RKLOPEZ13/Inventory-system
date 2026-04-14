@@ -105,6 +105,33 @@ function inventory_inventory_no_prefix(): string
     return 'NCIA-';
 }
 
+function inventory_default_actor_id(): int
+{
+    return 1;
+}
+
+function inventory_default_actor_name(PDO $pdo): string
+{
+    static $name = null;
+
+    if ($name !== null) {
+        return $name;
+    }
+
+    $statement = $pdo->prepare(
+        'SELECT CONCAT(first_name, " ", last_name) AS full_name
+         FROM users
+         WHERE user_id = :user_id
+         LIMIT 1'
+    );
+    $statement->execute(['user_id' => inventory_default_actor_id()]);
+
+    $resolved = trim((string) $statement->fetchColumn());
+    $name = $resolved !== '' ? $resolved : 'System Admin';
+
+    return $name;
+}
+
 function inventory_format_inventory_no(int $sequence): string
 {
     return sprintf('%s%04d', inventory_inventory_no_prefix(), $sequence);
@@ -506,16 +533,20 @@ function inventory_deploy_item(PDO $pdo, array $source, int $userId = 1): array
         : null;
     $inventoryStatusId = isset($source['inventory_status_id']) && $source['inventory_status_id'] !== ''
         ? (int) $source['inventory_status_id']
-        : null;
+        : (isset($item['inventory_status_id']) ? (int) $item['inventory_status_id'] : null);
 
     if ($deploymentStatusId === null || $inventoryStatusId === null) {
-        return ['success' => false, 'message' => 'Deployment status and inventory status are required.'];
+        return ['success' => false, 'message' => 'Deployment status is required.'];
     }
 
     $custodianId = isset($source['custodian_id']) && $source['custodian_id'] !== '' ? (int) $source['custodian_id'] : null;
     $departmentId = isset($source['department_id']) && $source['department_id'] !== '' ? (int) $source['department_id'] : null;
-    $deployedDate = !empty($source['deployed_date']) ? $source['deployed_date'] : null;
+    $deployedDate = !empty($source['deployed_date']) ? $source['deployed_date'] : date('Y-m-d');
     $returnedDate = !empty($source['returned_date']) ? $source['returned_date'] : null;
+
+    if ($custodianId === null || $departmentId === null) {
+        return ['success' => false, 'message' => 'Deploy To and Department are required.'];
+    }
 
     $updateStatement = $pdo->prepare(
         'UPDATE inventory

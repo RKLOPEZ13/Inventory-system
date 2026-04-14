@@ -6,7 +6,7 @@ inventory_api_require_post();
 
 try {
     $pdo->beginTransaction();
-    $result = inventory_deploy_item($pdo, $_POST, 1);
+    $result = inventory_deploy_item($pdo, $_POST, inventory_default_actor_id());
 
     if (!$result['success']) {
         $pdo->rollBack();
@@ -22,4 +22,3 @@ try {
 
     inventory_api_handle_exception($exception);
 }
-

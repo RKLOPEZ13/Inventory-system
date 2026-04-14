@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Apr 12, 2026 at 04:09 AM
+-- Generation Time: Apr 13, 2026 at 10:43 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -143,10 +143,11 @@ CREATE TABLE `companies` (
 --
 
 INSERT INTO `companies` (`company_id`, `company_code`, `company_name`, `description`, `is_active`, `created_at`, `updated_at`) VALUES
-(1, 'NCIA', 'NCIA', 'Company list', 1, '2026-04-12 00:35:18', '2026-04-12 00:35:18'),
-(2, 'NCIA1', 'NCIA 1', 'Company list', 1, '2026-04-12 00:35:18', '2026-04-12 00:35:18'),
-(3, 'NCIA2', 'NCIA 2', 'Company list', 1, '2026-04-12 00:35:18', '2026-04-12 00:35:18'),
-(4, 'NCIALIFE', 'NCIA Life', 'Company list', 1, '2026-04-12 00:35:18', '2026-04-12 00:35:18');
+(1, 'Lionhill Hodlings In', 'Lionhill Hodlings Inc.', 'Company list', 1, '2026-04-12 00:35:18', '2026-04-13 06:38:20'),
+(2, 'NCIA1', 'New Canaan Insurance Agency Inc.', 'Company list', 1, '2026-04-12 00:35:18', '2026-04-13 06:39:42'),
+(3, 'NCIA2', 'NCIA Non-Life Insurance Services Agency Inc.', 'Company list', 1, '2026-04-12 00:35:18', '2026-04-13 06:40:09'),
+(4, 'NCIALIFE', 'NCIA Life & Benefits Company', 'Company list', 1, '2026-04-12 00:35:18', '2026-04-13 06:40:25'),
+(5, 'N/A', 'N/A', 'Company list\r\n', 1, '2026-04-13 06:42:16', '2026-04-13 06:42:16');
 
 -- --------------------------------------------------------
 
@@ -293,14 +294,18 @@ CREATE TABLE `inventory` (
   `remarks` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `inventory`
 --
 
 INSERT INTO `inventory` (`inventory_id`, `inventory_no`, `company_id`, `category_id`, `sub_category_id`, `brand_id`, `model`, `item_description`, `serial_number`, `custodian_id`, `department_id`, `mac_address`, `device_name`, `current_os`, `age_status_id`, `inventory_status_id`, `deployment_status_id`, `deployed_date`, `returned_date`, `purchase_date`, `purchase_month`, `purchase_year`, `remarks`, `created_at`, `updated_at`) VALUES
-(1, 'NCIA-0001', 1, 2, 1, 1, 'INSPIRON 15 3000', 'Processor: i3 7th Gen\r\nRAM: 12 GB\r\nStorage HDD: 1 TB\r\nStorage SDD: 250 GB\r\nw+ charger', 'J1JF5P2', 1, 2, '20-BD-1D-83-D6-B4', 'LAPTOP-PC-FJRABAD', 'WINDOW 11', 1, 1, NULL, NULL, NULL, '2026-02-06', 'February', '2026', 'This is originally from ms Paula but was swapped\r\nPREVIOUS USER: JOSIE RUANES', '2026-04-12 00:35:18', '2026-04-12 01:43:26');
+(5, 'NCIA-0001', 5, 1, 18, 33, 'W25', 'Wireless EarPhone\r\nType-C Cable', '2201130004', NULL, 12, NULL, NULL, NULL, 1, 10, NULL, NULL, NULL, '2026-03-31', 'March', '2026', NULL, '2026-04-13 07:35:27', '2026-04-13 07:35:27'),
+(6, 'NCIA-0002', 5, 1, 18, 33, 'W25', 'Wireless EarPhone\r\nType-C Cable', '2201130004', NULL, 12, NULL, NULL, NULL, 1, 10, NULL, NULL, NULL, '2026-03-31', 'March', '2026', NULL, '2026-04-13 07:35:27', '2026-04-13 07:35:27'),
+(7, 'NCIA-0003', 5, 1, 18, 33, 'W25', 'Wireless EarPhone\r\nType-C Cable', '2201130004', NULL, 12, NULL, NULL, NULL, 1, 10, NULL, NULL, NULL, '2026-03-31', 'March', '2026', NULL, '2026-04-13 07:35:27', '2026-04-13 07:35:27'),
+(8, 'NCIA-0004', 5, 1, 18, 33, 'W25', 'Wireless EarPhone\r\nType-C Cable', '2201130004', NULL, 12, NULL, NULL, NULL, 1, 10, NULL, NULL, NULL, '2026-03-31', 'March', '2026', NULL, '2026-04-13 07:35:27', '2026-04-13 07:35:27'),
+(9, 'NCIA-0005', 5, 1, 18, 33, 'W25', 'Wireless EarPhone\r\nType-C Cable', '2201130004', NULL, 12, NULL, NULL, NULL, 1, 10, NULL, NULL, NULL, '2026-03-31', 'March', '2026', NULL, '2026-04-13 07:35:27', '2026-04-13 07:35:27');
 
 --
 -- Triggers `inventory`
@@ -348,16 +353,10 @@ CREATE TABLE `inventory_statuses` (
 --
 
 INSERT INTO `inventory_statuses` (`inventory_status_id`, `status_name`, `description`, `sort_order`, `is_active`, `created_at`, `updated_at`) VALUES
-(1, 'ACTIVE', 'Currently in use', 1, 1, '2026-04-12 01:43:26', '2026-04-12 01:43:26'),
-(2, 'INACTIVE', 'Not currently in use', 2, 1, '2026-04-12 01:43:26', '2026-04-12 01:43:26'),
-(3, 'RETIRED', 'Retired from service', 3, 1, '2026-04-12 01:43:26', '2026-04-12 01:43:26'),
-(4, 'DISPOSED', 'Disposed item', 4, 1, '2026-04-12 01:43:26', '2026-04-12 01:43:26'),
-(5, 'LOST', 'Lost item', 5, 1, '2026-04-12 01:43:26', '2026-04-12 01:43:26'),
-(6, 'DAMAGED', 'Damaged item', 6, 1, '2026-04-12 01:43:26', '2026-04-12 01:43:26'),
-(7, 'Stolen', 'Item was stolen', 7, 1, '2026-04-12 01:43:26', '2026-04-12 01:43:26'),
-(8, 'Missing', 'Item is missing', 8, 1, '2026-04-12 01:43:26', '2026-04-12 01:43:26'),
-(9, 'Spare', 'Spare / standby unit', 9, 1, '2026-04-12 01:43:26', '2026-04-12 01:43:26'),
-(10, 'Available', 'Available for deployment or use', 10, 1, '2026-04-12 01:43:26', '2026-04-12 01:43:26');
+(7, 'STOLEN', 'Item was stolen', 7, 1, '2026-04-12 01:43:26', '2026-04-12 09:50:01'),
+(8, 'MISSING', 'Item is missing', 8, 1, '2026-04-12 01:43:26', '2026-04-12 09:50:06'),
+(9, 'SPARE', 'Spare / standby unit', 9, 1, '2026-04-12 01:43:26', '2026-04-12 09:50:10'),
+(10, 'AVAILABLE', 'Available for deployment or use', 10, 1, '2026-04-12 01:43:26', '2026-04-12 09:50:15');
 
 -- --------------------------------------------------------
 
@@ -462,31 +461,6 @@ INSERT INTO `users` (`user_id`, `role`, `first_name`, `last_name`, `username`, `
 -- (See below for the actual view)
 --
 CREATE TABLE `vw_inventory_details` (
-`inventory_id` bigint(20) unsigned
-,`inventory_no` varchar(30)
-,`company_name` varchar(100)
-,`category_name` varchar(100)
-,`sub_category_name` varchar(150)
-,`brand_name` varchar(150)
-,`model` varchar(150)
-,`item_description` text
-,`serial_number` varchar(150)
-,`assigned_to` varchar(150)
-,`department_name` varchar(150)
-,`mac_address` varchar(50)
-,`device_name` varchar(150)
-,`current_os` varchar(100)
-,`age_status` varchar(50)
-,`inventory_status` varchar(50)
-,`deployment_status` varchar(50)
-,`deployed_date` date
-,`returned_date` date
-,`purchase_date` date
-,`purchase_month` varchar(20)
-,`purchase_year` year(4)
-,`remarks` text
-,`created_at` timestamp
-,`updated_at` timestamp
 );
 
 -- --------------------------------------------------------
@@ -496,7 +470,7 @@ CREATE TABLE `vw_inventory_details` (
 --
 DROP TABLE IF EXISTS `vw_inventory_details`;
 
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `vw_inventory_details`  AS SELECT `i`.`inventory_id` AS `inventory_id`, `i`.`inventory_no` AS `inventory_no`, `c`.`company_name` AS `company_name`, `cat`.`category_name` AS `category_name`, `sc`.`sub_category_name` AS `sub_category_name`, `b`.`brand_name` AS `brand_name`, `i`.`model` AS `model`, `i`.`item_description` AS `item_description`, `i`.`serial_number` AS `serial_number`, `cu`.`custodian_name` AS `assigned_to`, `d`.`department_name` AS `department_name`, `i`.`mac_address` AS `mac_address`, `i`.`device_name` AS `device_name`, `i`.`current_os` AS `current_os`, `ag`.`status_name` AS `age_status`, `ist`.`status_name` AS `inventory_status`, `dst`.`status_name` AS `deployment_status`, `i`.`deployed_date` AS `deployed_date`, `i`.`returned_date` AS `returned_date`, `i`.`purchase_date` AS `purchase_date`, `i`.`purchase_month` AS `purchase_month`, `i`.`purchase_year` AS `purchase_year`, `i`.`remarks` AS `remarks`, `i`.`created_at` AS `created_at`, `i`.`updated_at` AS `updated_at` FROM (((((((((`inventory` `i` join `companies` `c` on(`i`.`company_id` = `c`.`company_id`)) join `categories` `cat` on(`i`.`category_id` = `cat`.`category_id`)) join `sub_categories` `sc` on(`i`.`sub_category_id` = `sc`.`sub_category_id`)) join `brands` `b` on(`i`.`brand_id` = `b`.`brand_id`)) left join `custodians` `cu` on(`i`.`custodian_id` = `cu`.`custodian_id`)) left join `departments` `d` on(`i`.`department_id` = `d`.`department_id`)) left join `age_statuses` `ag` on(`i`.`age_status_id` = `ag`.`age_status_id`)) left join `inventory_statuses` `ist` on(`i`.`inventory_status_id` = `ist`.`inventory_status_id`)) left join `deployment_statuses` `dst` on(`i`.`deployment_status_id` = `dst`.`deployment_status_id`)) ;
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `vw_inventory_details`  AS SELECT `i`.`inventory_id` AS `inventory_id`, `i`.`inventory_no` AS `inventory_no`, `c`.`company_name` AS `company_name`, `cat`.`category_name` AS `category_name`, `sc`.`sub_category_name` AS `sub_category_name`, `b`.`brand_name` AS `brand_name`, `i`.`model` AS `model`, `i`.`item_description` AS `item_description`, `i`.`serial_number` AS `serial_number`, `cu`.`custodian_name` AS `assigned_to`, `d`.`department_name` AS `department_name`, `i`.`mac_address` AS `mac_address`, `i`.`device_name` AS `device_name`, `i`.`current_os` AS `current_os`, `i`.`device_age_months` AS `device_age_months`, `ag`.`status_name` AS `age_status`, `ist`.`status_name` AS `inventory_status`, `dst`.`status_name` AS `deployment_status`, `i`.`deployed_date` AS `deployed_date`, `i`.`returned_date` AS `returned_date`, `i`.`purchase_date` AS `purchase_date`, `i`.`purchase_month` AS `purchase_month`, `i`.`purchase_year` AS `purchase_year`, `i`.`remarks` AS `remarks`, `i`.`created_at` AS `created_at`, `i`.`updated_at` AS `updated_at` FROM (((((((((`inventory` `i` join `companies` `c` on(`i`.`company_id` = `c`.`company_id`)) join `categories` `cat` on(`i`.`category_id` = `cat`.`category_id`)) join `sub_categories` `sc` on(`i`.`sub_category_id` = `sc`.`sub_category_id`)) join `brands` `b` on(`i`.`brand_id` = `b`.`brand_id`)) left join `custodians` `cu` on(`i`.`custodian_id` = `cu`.`custodian_id`)) left join `departments` `d` on(`i`.`department_id` = `d`.`department_id`)) left join `age_statuses` `ag` on(`i`.`age_status_id` = `ag`.`age_status_id`)) left join `inventory_statuses` `ist` on(`i`.`inventory_status_id` = `ist`.`inventory_status_id`)) left join `deployment_statuses` `dst` on(`i`.`deployment_status_id` = `dst`.`deployment_status_id`)) ;
 
 --
 -- Indexes for dumped tables
@@ -578,7 +552,6 @@ ALTER TABLE `deployment_statuses`
 ALTER TABLE `inventory`
   ADD PRIMARY KEY (`inventory_id`),
   ADD UNIQUE KEY `uq_inventory_no` (`inventory_no`),
-  ADD UNIQUE KEY `uq_inventory_serial_number` (`serial_number`),
   ADD KEY `idx_inventory_company` (`company_id`),
   ADD KEY `idx_inventory_category` (`category_id`),
   ADD KEY `idx_inventory_sub_category` (`sub_category_id`),
@@ -592,7 +565,8 @@ ALTER TABLE `inventory`
   ADD KEY `idx_inventory_inventory_status_id` (`inventory_status_id`),
   ADD KEY `idx_inventory_deployment_status_id` (`deployment_status_id`),
   ADD KEY `idx_inventory_deployed_date` (`deployed_date`),
-  ADD KEY `idx_inventory_returned_date` (`returned_date`);
+  ADD KEY `idx_inventory_returned_date` (`returned_date`),
+  ADD KEY `idx_inventory_serial_number` (`serial_number`);
 
 --
 -- Indexes for table `inventory_statuses`
@@ -656,7 +630,7 @@ ALTER TABLE `categories`
 -- AUTO_INCREMENT for table `companies`
 --
 ALTER TABLE `companies`
-  MODIFY `company_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `company_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `custodians`
@@ -686,7 +660,7 @@ ALTER TABLE `deployment_statuses`
 -- AUTO_INCREMENT for table `inventory`
 --
 ALTER TABLE `inventory`
-  MODIFY `inventory_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `inventory_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT for table `inventory_statuses`
