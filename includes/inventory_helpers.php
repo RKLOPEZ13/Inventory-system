@@ -29,12 +29,6 @@ function inventory_lookup_definitions(): array
             'label' => 'brand_name',
             'order' => 'brand_name',
         ],
-        'custodian_id' => [
-            'table' => 'custodians',
-            'value' => 'custodian_id',
-            'label' => 'custodian_name',
-            'order' => 'custodian_name',
-        ],
         'department_id' => [
             'table' => 'departments',
             'value' => 'department_id',
@@ -74,7 +68,6 @@ function inventory_filter_columns(): array
 function inventory_hidden_table_columns(): array
 {
     return [
-        'custodian_id',
         'department_id',
         'deployment_status_id',
         'deployed_date',
@@ -85,7 +78,6 @@ function inventory_hidden_table_columns(): array
 function inventory_hidden_form_columns(): array
 {
     return [
-        'custodian_id',
         'department_id',
         'deployment_status_id',
         'deployed_date',
@@ -572,19 +564,19 @@ function inventory_deploy_item(PDO $pdo, array $source, int $userId = 1): array
         return ['success' => false, 'message' => 'Deployment status is required.'];
     }
 
-    $custodianId = isset($source['custodian_id']) && $source['custodian_id'] !== '' ? (int) $source['custodian_id'] : null;
     $departmentId = isset($source['department_id']) && $source['department_id'] !== '' ? (int) $source['department_id'] : null;
     $deployedDate = !empty($source['deployed_date']) ? $source['deployed_date'] : date('Y-m-d');
     $returnedDate = !empty($source['returned_date']) ? $source['returned_date'] : null;
+    $deployedTo = isset($source['deployed_to']) ? trim((string) $source['deployed_to']) : null;
+    $deployedTo = $deployedTo !== '' ? $deployedTo : null;
 
-    if ($custodianId === null || $departmentId === null) {
-        return ['success' => false, 'message' => 'Deploy To and Department are required.'];
+    if ($departmentId === null) {
+        return ['success' => false, 'message' => 'Department is required.'];
     }
 
     $updateStatement = $pdo->prepare(
         'UPDATE inventory
-         SET custodian_id = :custodian_id,
-             department_id = :department_id,
+         SET department_id = :department_id,
              deployment_status_id = :deployment_status_id,
              inventory_status_id = :inventory_status_id,
              deployed_date = :deployed_date,
@@ -593,7 +585,6 @@ function inventory_deploy_item(PDO $pdo, array $source, int $userId = 1): array
     );
 
     $updateStatement->execute([
-        'custodian_id' => $custodianId,
         'department_id' => $departmentId,
         'deployment_status_id' => $deploymentStatusId,
         'inventory_status_id' => $inventoryStatusId,
@@ -601,13 +592,6 @@ function inventory_deploy_item(PDO $pdo, array $source, int $userId = 1): array
         'returned_date' => $returnedDate,
         'inventory_id' => $inventoryId,
     ]);
-
-    $custodianName = null;
-    if ($custodianId !== null) {
-        $custodianStatement = $pdo->prepare('SELECT custodian_name FROM custodians WHERE custodian_id = :custodian_id');
-        $custodianStatement->execute(['custodian_id' => $custodianId]);
-        $custodianName = $custodianStatement->fetchColumn() ?: null;
-    }
 
     $logStatement = $pdo->prepare(
         'INSERT INTO deployment_logs (
@@ -649,7 +633,7 @@ function inventory_deploy_item(PDO $pdo, array $source, int $userId = 1): array
         'brand_id' => $item['brand_id'],
         'model' => $item['model'],
         'serial_number' => $item['serial_number'],
-        'deployed_to' => $custodianName,
+        'deployed_to' => $deployedTo,
         'department_id' => $departmentId,
         'deployment_status_id' => $deploymentStatusId,
         'date_deployed' => $deployedDate,

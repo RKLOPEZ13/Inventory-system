@@ -33,13 +33,6 @@ include '../includes/sidebar.php';
                   Export
               </button>
               
-                <button class="btn btn-success btn-deploy" id="inventoryDeployBtn" type="button" <?= $canEditInventory ? '' : 'disabled' ?>>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M5 12h14"/><path d="M12 5l7 7-7 7"/>
-                    </svg>
-                    Deploy Item
-                </button>
-
               <button class="btn btn-primary" id="inventoryAddBtn" type="button" <?= $canEditInventory ? '' : 'disabled' ?>>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                       <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -170,107 +163,6 @@ include '../includes/sidebar.php';
     </div>
 </div>
 
-<div class="modal-overlay" id="inventoryDeployModal">
-    <div class="modal modal-wide inventory-deploy-modal">
-        <div class="modal-header inventory-deploy-modal-header">
-            <div>
-                <span class="inventory-modal-kicker">Deployment</span>
-                <h3 class="modal-title">Deploy Item</h3>
-                <p class="modal-subtext">Search and select one inventory item, then complete the deployment details.</p>
-            </div>
-            <button class="modal-close-btn" type="button" onclick="closeModal('inventoryDeployModal')">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-            </button>
-        </div>
-
-        <form id="inventoryDeployForm" class="inventory-deploy-form">
-            <input type="hidden" id="deployInventoryId" name="inventory_id" required>
-
-            <div class="inventory-deploy-search-shell" id="deploySearchShell">
-                <label class="label" for="deployInventorySearch">Search Inventory Item</label>
-                <div class="inventory-search-field inventory-deploy-search-field">
-                    <span class="inventory-search-icon" aria-hidden="true">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                        </svg>
-                    </span>
-                    <input
-                        type="search"
-                        class="input inventory-search-input"
-                        id="deployInventorySearch"
-                        autocomplete="off"
-                        placeholder="Search by inventory no., model, serial number, company, or brand"
-                    >
-                </div>
-                <div class="field-note">The list below updates as you type. Click a row to choose the item to deploy.</div>
-
-                <div class="inventory-deploy-picker" id="deployInventoryPicker">
-                    <div class="inventory-deploy-picker-scroll">
-                        <table class="data-table inventory-deploy-results">
-                            <thead>
-                                <tr>
-                                    <th>INVENTORY NO.</th>
-                                    <th>COMPANY</th>
-                                    <th>CATEGORY</th>
-                                    <th>SUB CATEGORY</th>
-                                    <th>BRAND</th>
-                                    <th>MODEL</th>
-                                    <th>SERIAL NUMBER</th>
-                                    <th>DEVICE AGE</th>
-                                    <th>AGE STATUS</th>
-                                    <th>INVENTORY STATUS</th>
-                                </tr>
-                            </thead>
-                            <tbody id="deployInventoryResults"></tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div class="inventory-deploy-selected" id="deploySelectedItem">No inventory item selected yet.</div>
-            </div>
-
-            <div class="inventory-item-form-shell inventory-deploy-form-shell">
-                <div class="form-row inventory-deploy-grid">
-                    <div class="form-col">
-                        <label class="label" for="deployCustodianId">Deploy To</label>
-                        <select class="select" id="deployCustodianId" name="custodian_id" required></select>
-                    </div>
-
-                    <div class="form-col">
-                        <label class="label" for="deployDepartmentId">Department</label>
-                        <select class="select" id="deployDepartmentId" name="department_id" required></select>
-                    </div>
-
-                    <div class="form-col">
-                        <label class="label" for="deployDeploymentStatusId">Deployment Status</label>
-                        <select class="select" id="deployDeploymentStatusId" name="deployment_status_id" required></select>
-                    </div>
-
-                    <div class="form-col">
-                        <label class="label" for="deployDate">Date Deployed</label>
-                        <input class="input" id="deployDate" name="deployed_date" type="date" readonly>
-                        <div class="field-note">Auto-set when this deployment is saved.</div>
-                    </div>
-
-                    <div class="form-col">
-                        <label class="label" for="deployProcessedBy">Deployed By</label>
-                        <input class="input" id="deployProcessedBy" type="text" readonly>
-                        <div class="field-note">Currently using the default placeholder user until session data is connected.</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="modal-footer">
-                <button class="btn btn-secondary" type="button" onclick="closeModal('inventoryDeployModal')">Cancel</button>
-                <button class="btn btn-primary" type="submit">Deploy Item</button>
-            </div>
-        </form>
-    </div>
-</div>
-
 <script>
 window.inventoryPageData = <?= json_encode([
     'columns' => $inventoryPageData['columns'],
@@ -284,7 +176,6 @@ window.inventoryPageData = <?= json_encode([
         'role' => $role,
         'canEdit' => $canEditInventory,
         'saveEndpoint' => '../api/inventory/save.php',
-        'deployEndpoint' => '../api/inventory/deploy.php',
         'deleteEndpoint' => '../api/inventory/delete.php',
     ],
 ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
