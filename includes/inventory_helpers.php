@@ -68,6 +68,7 @@ function inventory_filter_columns(): array
 function inventory_hidden_table_columns(): array
 {
     return [
+        'assigned_to',
         'department_id',
         'deployment_status_id',
         'deployed_date',
