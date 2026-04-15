@@ -422,11 +422,27 @@ function renderDropdownModalOptions() {
                 type="button"
                 data-option-id="${escapeHtml(option.option_id)}"
                 data-option-label="${escapeHtml(option.option_label)}"
+                data-confirming="false"
             >
                 Delete
             </button>
         </div>
     `).join('');
+}
+
+function resetDropdownDeleteConfirmations(exceptButton = null) {
+    const optionButtons = document.querySelectorAll('#dropdownModalOptions button[data-option-id]');
+
+    optionButtons.forEach(button => {
+        if (!(button instanceof HTMLButtonElement) || button === exceptButton) {
+            return;
+        }
+
+        button.dataset.confirming = 'false';
+        button.textContent = 'Delete';
+        button.classList.remove('btn-danger');
+        button.classList.add('btn-secondary');
+    });
 }
 
 function openDropdownModal(button) {
@@ -520,35 +536,45 @@ async function addDropdownOption() {
     }
 }
 
-function deleteDropdownOption(button) {
+async function deleteDropdownOption(button) {
     if (!(button instanceof HTMLButtonElement)) {
         return;
     }
 
     const optionId = button.dataset.optionId || '';
-    const optionLabel = button.dataset.optionLabel || 'this option';
 
     if (dropdownState.key === '' || optionId === '') {
         return;
     }
 
-    confirmAction(`Delete ${optionLabel} from ${dropdownState.name}?`, async () => {
-        const formData = new FormData();
-        formData.append('action', 'delete');
-        formData.append('dropdown_key', dropdownState.key);
-        formData.append('option_id', optionId);
+    if (button.dataset.confirming !== 'true') {
+        resetDropdownDeleteConfirmations(button);
+        button.dataset.confirming = 'true';
+        button.textContent = 'Confirm';
+        button.classList.remove('btn-secondary');
+        button.classList.add('btn-danger');
+        return;
+    }
 
-        button.disabled = true;
+    const formData = new FormData();
+    formData.append('action', 'delete');
+    formData.append('dropdown_key', dropdownState.key);
+    formData.append('option_id', optionId);
 
-        try {
-            const result = await postDropdownAction(formData);
-            showToast(result.message || 'Dropdown updated.', 'success');
-            applyDropdownResult(result);
-        } catch (error) {
-            button.disabled = false;
-            showToast(error.message || 'Unable to delete option.', 'error');
-        }
-    });
+    button.disabled = true;
+
+    try {
+        const result = await postDropdownAction(formData);
+        showToast(result.message || 'Dropdown updated.', 'success');
+        applyDropdownResult(result);
+    } catch (error) {
+        button.disabled = false;
+        button.dataset.confirming = 'false';
+        button.textContent = 'Delete';
+        button.classList.remove('btn-danger');
+        button.classList.add('btn-secondary');
+        showToast(error.message || 'Unable to delete option.', 'error');
+    }
 }
 
 document.getElementById('dropdownModalAddBtn')?.addEventListener('click', addDropdownOption);
