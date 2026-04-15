@@ -26,7 +26,7 @@ include '../includes/sidebar.php';
                 <p class="page-desc">Configure the system, dropdowns, and access controls</p>
             </div>
             <div class="header-actions">
-                <button class="btn btn-primary btn-sm" onclick="saveSettings()">
+                <button class="btn btn-primary btn-sm" type="button" onclick="saveSettings()">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                         <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
                     </svg>
@@ -36,10 +36,10 @@ include '../includes/sidebar.php';
         </div>
 
         <div class="tabs" style="max-width:600px">
-            <button class="tab-btn active" onclick="switchTab('general', this)">General</button>
-            <button class="tab-btn" onclick="switchTab('dropdowns', this)">Dropdowns</button>
-            <button class="tab-btn" onclick="switchTab('access', this)">Access</button>
-            <button class="tab-btn" onclick="switchTab('backup', this)">Backup</button>
+            <button class="tab-btn active" type="button" onclick="switchTab('general', this)">General</button>
+            <button class="tab-btn" type="button" onclick="switchTab('dropdowns', this)">Dropdowns</button>
+            <button class="tab-btn" type="button" onclick="switchTab('access', this)">Access</button>
+            <button class="tab-btn" type="button" onclick="switchTab('backup', this)">Backup</button>
         </div>
 
         <div id="tab-general">
@@ -107,7 +107,7 @@ include '../includes/sidebar.php';
                 <div style="font-family:var(--font-main);font-size:.95rem;font-weight:700;margin-bottom:6px">System Dropdowns</div>
                 <p style="font-size:.84rem;color:var(--text-secondary);margin-bottom:20px">View each dropdown field used across the system and open it to manage its option list.</p>
                 <?php foreach ($settingsDropdowns as $dropdown): ?>
-                <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border-light)">
+                <div data-dropdown-card="<?= htmlspecialchars($dropdown['key']) ?>" style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border-light)">
                     <div style="display:flex;align-items:center;gap:12px">
                         <div style="width:34px;height:34px;border-radius:8px;background:var(--bg);display:flex;align-items:center;justify-content:center">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2">
@@ -116,7 +116,7 @@ include '../includes/sidebar.php';
                         </div>
                         <div>
                             <div style="font-size:.88rem;font-weight:600"><?= htmlspecialchars($dropdown['name']) ?></div>
-                            <div style="font-size:.75rem;color:var(--text-muted)">
+                            <div data-dropdown-summary style="font-size:.75rem;color:var(--text-muted)">
                                 <?= (int) $dropdown['count'] ?> options<?php if ($dropdown['preview'] !== ''): ?> - <?= htmlspecialchars($dropdown['preview']) ?><?php endif; ?>
                             </div>
                         </div>
@@ -155,7 +155,7 @@ include '../includes/sidebar.php';
                         <label class="label">Confirm Passcode</label>
                         <input type="password" class="input" placeholder="Repeat new code">
                     </div>
-                    <button class="btn btn-primary" onclick="showToast('Passcode updated','success')">Update Passcode</button>
+                    <button class="btn btn-primary" type="button" onclick="showToast('Passcode updated','success')">Update Passcode</button>
                 </div>
 
                 <div class="card">
@@ -198,7 +198,7 @@ include '../includes/sidebar.php';
                         </svg>
                         <div style="font-weight:600;margin-bottom:4px">Export Backup</div>
                         <p style="font-size:.8rem;color:var(--text-muted);margin-bottom:14px">Download full database as SQL</p>
-                        <button class="btn btn-primary btn-sm" onclick="showToast('Backup download started','success')">Download Now</button>
+                        <button class="btn btn-primary btn-sm" type="button" onclick="showToast('Backup download started','success')">Download Now</button>
                     </div>
                     <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center">
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--secondary)" stroke-width="1.5" style="margin-bottom:10px">
@@ -206,7 +206,7 @@ include '../includes/sidebar.php';
                         </svg>
                         <div style="font-weight:600;margin-bottom:4px">Restore Backup</div>
                         <p style="font-size:.8rem;color:var(--text-muted);margin-bottom:14px">Upload a .sql backup file</p>
-                        <button class="btn btn-secondary btn-sm" onclick="showToast('Select a .sql file to restore','info')">Choose File</button>
+                        <button class="btn btn-secondary btn-sm" type="button" onclick="showToast('Select a .sql file to restore','info')">Choose File</button>
                     </div>
                 </div>
 
@@ -231,7 +231,7 @@ include '../includes/sidebar.php';
                     </div>
                     <div style="display:flex;align-items:center;gap:8px">
                         <span style="font-size:.78rem;color:var(--text-muted)"><?= $b[1] ?></span>
-                        <button class="btn btn-secondary btn-xs" onclick="showToast('Downloading backup...','info')">Download</button>
+                        <button class="btn btn-secondary btn-xs" type="button" onclick="showToast('Downloading backup...','info')">Download</button>
                     </div>
                 </div>
                 <?php endforeach; ?>
@@ -247,7 +247,7 @@ include '../includes/sidebar.php';
                 <h3 class="modal-title" id="dropdownModalTitle">Edit Dropdown</h3>
                 <p id="dropdownModalCopy" style="margin-top:4px;font-size:.8rem;color:var(--text-secondary)">Add or remove options for the selected dropdown field.</p>
             </div>
-            <button class="modal-close-btn" onclick="closeModal('dropdownModal')">
+            <button class="modal-close-btn" type="button" onclick="closeModal('dropdownModal')">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                     <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                 </svg>
@@ -269,7 +269,7 @@ include '../includes/sidebar.php';
             </div>
         </div>
         <div class="modal-footer">
-            <button class="btn btn-secondary" onclick="closeModal('dropdownModal')">Close</button>
+            <button class="btn btn-secondary" type="button" onclick="closeModal('dropdownModal')">Close</button>
         </div>
     </div>
 </div>
@@ -335,23 +335,67 @@ function escapeHtml(value) {
         .replace(/'/g, '&#039;');
 }
 
+function normalizeDropdownOptions(options) {
+    if (!Array.isArray(options)) {
+        return [];
+    }
+
+    return options
+        .map(option => ({
+            option_id: String(option.option_id ?? ''),
+            option_label: String(option.option_label ?? ''),
+        }))
+        .filter(option => option.option_id !== '' && option.option_label !== '');
+}
+
 function parseDropdownOptions(rawOptions) {
     try {
-        const parsed = JSON.parse(rawOptions || '[]');
-
-        if (!Array.isArray(parsed)) {
-            return [];
-        }
-
-        return parsed
-            .map(option => ({
-                option_id: String(option.option_id ?? ''),
-                option_label: String(option.option_label ?? ''),
-            }))
-            .filter(option => option.option_id !== '' && option.option_label !== '');
+        return normalizeDropdownOptions(JSON.parse(rawOptions || '[]'));
     } catch (error) {
         return [];
     }
+}
+
+function buildDropdownPreview(options) {
+    const labels = normalizeDropdownOptions(options).map(option => option.option_label);
+    let preview = labels.slice(0, 3).join(', ');
+
+    if (labels.length > 3) {
+        preview += ', ...';
+    }
+
+    return preview;
+}
+
+function syncDropdownCard(result) {
+    const triggerButton = document.querySelector(`button[data-dropdown-key="${dropdownState.key}"]`);
+
+    if (!(triggerButton instanceof HTMLButtonElement)) {
+        return;
+    }
+
+    const options = Array.isArray(result?.options)
+        ? normalizeDropdownOptions(result.options)
+        : dropdownState.options;
+    const count = Number.isFinite(Number(result?.count))
+        ? Number(result.count)
+        : options.length;
+    const preview = typeof result?.preview === 'string'
+        ? result.preview
+        : buildDropdownPreview(options);
+    const summary = triggerButton.closest('[data-dropdown-card]')?.querySelector('[data-dropdown-summary]');
+
+    triggerButton.dataset.dropdownOptions = JSON.stringify(options);
+
+    if (summary instanceof HTMLElement) {
+        summary.textContent = preview !== '' ? `${count} options - ${preview}` : `${count} options`;
+    }
+}
+
+function applyDropdownResult(result) {
+    dropdownState.options = normalizeDropdownOptions(result?.options ?? []);
+    renderDropdownModalOptions();
+    syncDropdownCard(result);
 }
 
 function renderDropdownModalOptions() {
@@ -466,10 +510,13 @@ async function addDropdownOption() {
     try {
         const result = await postDropdownAction(formData);
         showToast(result.message || 'Dropdown updated.', 'success');
-        window.setTimeout(() => window.location.reload(), 350);
+        applyDropdownResult(result);
+        input.value = '';
+        input.focus();
     } catch (error) {
-        addButton.disabled = false;
         showToast(error.message || 'Unable to add option.', 'error');
+    } finally {
+        addButton.disabled = false;
     }
 }
 
@@ -496,7 +543,7 @@ function deleteDropdownOption(button) {
         try {
             const result = await postDropdownAction(formData);
             showToast(result.message || 'Dropdown updated.', 'success');
-            window.setTimeout(() => window.location.reload(), 350);
+            applyDropdownResult(result);
         } catch (error) {
             button.disabled = false;
             showToast(error.message || 'Unable to delete option.', 'error');

@@ -106,29 +106,48 @@ function settings_dropdown_options(PDO $pdo, string $key): array
     return $pdo->query($sql)->fetchAll();
 }
 
+function settings_dropdown_summary(array $options): array
+{
+    $labels = array_map(
+        static fn (array $option): string => (string) ($option['option_label'] ?? ''),
+        $options
+    );
+    $preview = implode(', ', array_slice($labels, 0, 3));
+
+    if (count($labels) > 3) {
+        $preview .= ', ...';
+    }
+
+    return [
+        'count' => count($options),
+        'preview' => $preview,
+    ];
+}
+
+function settings_dropdown_ui_state(PDO $pdo, string $key): array
+{
+    $options = settings_dropdown_options($pdo, $key);
+
+    return array_merge(
+        settings_dropdown_summary($options),
+        ['options' => $options]
+    );
+}
+
 function settings_dropdown_payload(PDO $pdo): array
 {
     $payload = [];
 
     foreach (settings_dropdown_definitions() as $key => $definition) {
-        $options = settings_dropdown_options($pdo, $key);
-        $labels = array_map(
-            static fn (array $option): string => (string) ($option['option_label'] ?? ''),
-            $options
+        $uiState = settings_dropdown_ui_state($pdo, $key);
+
+        $payload[] = array_merge(
+            [
+                'key' => $key,
+                'name' => $definition['title'],
+            ],
+            $uiState
         );
-        $preview = implode(', ', array_slice($labels, 0, 3));
-
-        if (count($labels) > 3) {
-            $preview .= ', ...';
-        }
-
-        $payload[] = [
-            'key' => $key,
-            'name' => $definition['title'],
-            'count' => count($options),
-            'preview' => $preview,
-            'options' => $options,
-        ];
     }
 
     return $payload;
@@ -269,12 +288,15 @@ function settings_add_dropdown_option(PDO $pdo, string $key, string $label): arr
     );
     $statement->execute($params);
 
-    return [
-        'success' => true,
-        'message' => $definition['title'] . ' updated successfully.',
-        'option_id' => (int) $pdo->lastInsertId(),
-        'option_label' => $label,
-    ];
+    return array_merge(
+        [
+            'success' => true,
+            'message' => $definition['title'] . ' updated successfully.',
+            'option_id' => (int) $pdo->lastInsertId(),
+            'option_label' => $label,
+        ],
+        settings_dropdown_ui_state($pdo, $key)
+    );
 }
 
 function settings_delete_dropdown_option(PDO $pdo, string $key, int $optionId): array
@@ -306,9 +328,12 @@ function settings_delete_dropdown_option(PDO $pdo, string $key, int $optionId): 
     );
     $statement->execute(['option_id' => $optionId]);
 
-    return [
-        'success' => true,
-        'message' => $definition['title'] . ' updated successfully.',
-        'option_id' => $optionId,
-    ];
+    return array_merge(
+        [
+            'success' => true,
+            'message' => $definition['title'] . ' updated successfully.',
+            'option_id' => $optionId,
+        ],
+        settings_dropdown_ui_state($pdo, $key)
+    );
 }
