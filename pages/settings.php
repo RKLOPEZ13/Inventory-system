@@ -1,14 +1,19 @@
 <?php
 $page_title = 'Settings';
 $current_page = 'settings';
-include '../includes/header.php';
-include '../includes/sidebar.php';
 $role = $_GET['role'] ?? 'user';
+
+require_once '../includes/settings_helpers.php';
 
 if ($role !== 'user') {
     echo '<script>window.location.href="dashboard.php?role=viewer";</script>';
     exit;
 }
+
+$settingsDropdowns = settings_dropdown_payload($pdo);
+
+include '../includes/header.php';
+include '../includes/sidebar.php';
 ?>
 
 <div class="main-content">
@@ -30,7 +35,6 @@ if ($role !== 'user') {
             </div>
         </div>
 
-        <!-- Tabs -->
         <div class="tabs" style="max-width:600px">
             <button class="tab-btn active" onclick="switchTab('general', this)">General</button>
             <button class="tab-btn" onclick="switchTab('dropdowns', this)">Dropdowns</button>
@@ -38,7 +42,6 @@ if ($role !== 'user') {
             <button class="tab-btn" onclick="switchTab('backup', this)">Backup</button>
         </div>
 
-        <!-- General Tab -->
         <div id="tab-general">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
                 <div class="card">
@@ -54,7 +57,7 @@ if ($role !== 'user') {
                         </div>
                         <div class="form-col">
                             <label class="label">Currency Symbol</label>
-                            <input type="text" class="input" value="₱" style="width:80px">
+                            <input type="text" class="input" value="&#8369;" style="width:80px">
                         </div>
                         <div class="form-col">
                             <label class="label">Date Format</label>
@@ -99,31 +102,11 @@ if ($role !== 'user') {
             </div>
         </div>
 
-        <!-- Dropdowns Tab -->
         <div id="tab-dropdowns" style="display:none">
             <div class="card">
                 <div style="font-family:var(--font-main);font-size:.95rem;font-weight:700;margin-bottom:6px">System Dropdowns</div>
                 <p style="font-size:.84rem;color:var(--text-secondary);margin-bottom:20px">View each dropdown field used across the system and open it to manage its option list.</p>
-                <?php
-                $dropdowns = [
-                    ['Age Statuses', ['New', 'Old']],
-                    ['Brands', ['Dell', 'Lenovo', 'HP', 'Acer', 'Huawei', 'Samsung']],
-                    ['Categories', ['IT Accessory', 'Hardware']],
-                    ['Companies', ['New Canaan Insurance Agency Inc.', 'NCIA Non-Life Insurance Services Agency Inc.', 'NCIA Life & Benefits Company', 'Lionhill Holdings Inc.']],
-                    ['Departments', ['IT', 'Finance', 'Marketing', 'Claims', 'Admin', 'Human Resources']],
-                    ['Deployment Statuses', ['Deployed', 'Temporary', 'Returned', 'Returned with issue/s', 'Borrowed', 'Transfer']],
-                    ['Inventory Statuses', ['Available', 'Spare', 'Missing', 'Stolen']],
-                    ['Sub Categories', ['Laptop', 'Desktop', 'Storage', 'Printer', 'Accessory']],
-                ];
-                foreach ($dropdowns as $dropdown):
-                    $dropdownName = $dropdown[0];
-                    $dropdownOptions = $dropdown[1];
-                    $dropdownCount = count($dropdownOptions);
-                    $dropdownPreview = implode(', ', array_slice($dropdownOptions, 0, 3));
-                    if ($dropdownCount > 3) {
-                        $dropdownPreview .= ', ...';
-                    }
-                ?>
+                <?php foreach ($settingsDropdowns as $dropdown): ?>
                 <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border-light)">
                     <div style="display:flex;align-items:center;gap:12px">
                         <div style="width:34px;height:34px;border-radius:8px;background:var(--bg);display:flex;align-items:center;justify-content:center">
@@ -132,16 +115,19 @@ if ($role !== 'user') {
                             </svg>
                         </div>
                         <div>
-                            <div style="font-size:.88rem;font-weight:600"><?= htmlspecialchars($dropdownName) ?></div>
-                            <div style="font-size:.75rem;color:var(--text-muted)"><?= $dropdownCount ?> options<?php if ($dropdownPreview !== ''): ?> · <?= htmlspecialchars($dropdownPreview) ?><?php endif; ?></div>
+                            <div style="font-size:.88rem;font-weight:600"><?= htmlspecialchars($dropdown['name']) ?></div>
+                            <div style="font-size:.75rem;color:var(--text-muted)">
+                                <?= (int) $dropdown['count'] ?> options<?php if ($dropdown['preview'] !== ''): ?> - <?= htmlspecialchars($dropdown['preview']) ?><?php endif; ?>
+                            </div>
                         </div>
                     </div>
                     <div style="display:flex;align-items:center;gap:12px;flex-shrink:0">
                         <button
                             class="btn btn-secondary btn-xs"
                             type="button"
-                            data-dropdown-name="<?= htmlspecialchars($dropdownName) ?>"
-                            data-dropdown-options='<?= htmlspecialchars(json_encode($dropdownOptions), ENT_QUOTES, 'UTF-8') ?>'
+                            data-dropdown-key="<?= htmlspecialchars($dropdown['key']) ?>"
+                            data-dropdown-name="<?= htmlspecialchars($dropdown['name']) ?>"
+                            data-dropdown-options='<?= htmlspecialchars(json_encode($dropdown['options'], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT), ENT_QUOTES, 'UTF-8') ?>'
                             onclick="openDropdownModal(this)"
                         >
                             Edit
@@ -152,7 +138,6 @@ if ($role !== 'user') {
             </div>
         </div>
 
-        <!-- Access Tab -->
         <div id="tab-access" style="display:none">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
                 <div class="card">
@@ -201,7 +186,6 @@ if ($role !== 'user') {
             </div>
         </div>
 
-        <!-- Backup Tab -->
         <div id="tab-backup" style="display:none">
             <div class="card">
                 <div style="font-family:var(--font-main);font-size:.95rem;font-weight:700;margin-bottom:6px">Database Backup</div>
@@ -242,7 +226,7 @@ if ($role !== 'user') {
                         </svg>
                         <div>
                             <div style="font-size:.83rem;font-weight:500"><?= $b[0] ?></div>
-                            <div style="font-size:.74rem;color:var(--text-muted)"><?= $b[2] ?> · <?= $b[3] ?></div>
+                            <div style="font-size:.74rem;color:var(--text-muted)"><?= $b[2] ?> - <?= $b[3] ?></div>
                         </div>
                     </div>
                     <div style="display:flex;align-items:center;gap:8px">
@@ -256,7 +240,6 @@ if ($role !== 'user') {
     </div>
 </div>
 
-<!-- Dropdown Editor Modal -->
 <div class="modal-overlay" id="dropdownModal">
     <div class="modal" style="max-width:520px">
         <div class="modal-header">
@@ -271,6 +254,7 @@ if ($role !== 'user') {
             </button>
         </div>
         <div style="display:flex;flex-direction:column;gap:16px">
+            <input type="hidden" id="dropdownModalKey">
             <div>
                 <label class="label" style="margin-bottom:8px;display:block">Current Options</label>
                 <div id="dropdownModalOptions" style="display:flex;flex-direction:column;gap:10px;max-height:280px;overflow-y:auto;padding-right:4px"></div>
@@ -278,9 +262,10 @@ if ($role !== 'user') {
             <div class="form-col" style="gap:8px">
                 <label class="label">Add New Option</label>
                 <div style="display:flex;gap:10px;align-items:center">
-                    <input type="text" class="input" placeholder="Enter new option label">
-                    <button class="btn btn-primary btn-sm" type="button">Add</button>
+                    <input type="text" class="input" id="dropdownModalNewOption" placeholder="Enter new option label">
+                    <button class="btn btn-primary btn-sm" type="button" id="dropdownModalAddBtn">Add</button>
                 </div>
+                <p style="font-size:.76rem;color:var(--text-muted);margin:0">Delete only works for options that are not used by existing records.</p>
             </div>
         </div>
         <div class="modal-footer">
@@ -290,61 +275,255 @@ if ($role !== 'user') {
 </div>
 
 <style>
-/* Toggle Switch */
 .toggle {
-    width: 40px; height: 22px;
+    width: 40px;
+    height: 22px;
     background: var(--border);
     border-radius: 11px;
     position: relative;
     transition: background 200ms ease;
     flex-shrink: 0;
 }
-.toggle-on { background: var(--primary); }
+
+.toggle-on {
+    background: var(--primary);
+}
+
 .toggle-thumb {
-    width: 16px; height: 16px;
+    width: 16px;
+    height: 16px;
     background: white;
     border-radius: 50%;
     position: absolute;
-    top: 3px; left: 3px;
-    box-shadow: 0 1px 3px rgba(0,0,0,.2);
+    top: 3px;
+    left: 3px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .2);
     transition: transform 200ms ease;
 }
-.toggle-on .toggle-thumb { transform: translateX(18px); }
+
+.toggle-on .toggle-thumb {
+    transform: translateX(18px);
+}
 </style>
 
 <script>
+const dropdownEndpoint = '../api/settings/dropdowns.php';
+const dropdownState = {
+    key: '',
+    name: '',
+    options: [],
+};
+
 function switchTab(name, btn) {
-    document.querySelectorAll('[id^="tab-"]').forEach(t => t.style.display = 'none');
+    document.querySelectorAll('[id^="tab-"]').forEach(tab => {
+        tab.style.display = 'none';
+    });
+
     document.getElementById('tab-' + name).style.display = '';
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(tabButton => {
+        tabButton.classList.remove('active');
+    });
     btn.classList.add('active');
 }
+
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function parseDropdownOptions(rawOptions) {
+    try {
+        const parsed = JSON.parse(rawOptions || '[]');
+
+        if (!Array.isArray(parsed)) {
+            return [];
+        }
+
+        return parsed
+            .map(option => ({
+                option_id: String(option.option_id ?? ''),
+                option_label: String(option.option_label ?? ''),
+            }))
+            .filter(option => option.option_id !== '' && option.option_label !== '');
+    } catch (error) {
+        return [];
+    }
+}
+
+function renderDropdownModalOptions() {
+    const modalOptions = document.getElementById('dropdownModalOptions');
+
+    if (!modalOptions) {
+        return;
+    }
+
+    if (!dropdownState.options.length) {
+        modalOptions.innerHTML = `
+            <div style="padding:14px;border:1px dashed var(--border);border-radius:var(--radius-sm);background:var(--bg);font-size:.82rem;color:var(--text-muted);text-align:center;">
+                No options yet.
+            </div>
+        `;
+        return;
+    }
+
+    modalOptions.innerHTML = dropdownState.options.map(option => `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);">
+            <span style="font-size:.84rem;color:var(--text-primary)">${escapeHtml(option.option_label)}</span>
+            <button
+                class="btn btn-secondary btn-xs"
+                type="button"
+                data-option-id="${escapeHtml(option.option_id)}"
+                data-option-label="${escapeHtml(option.option_label)}"
+            >
+                Delete
+            </button>
+        </div>
+    `).join('');
+}
+
 function openDropdownModal(button) {
     const modalTitle = document.getElementById('dropdownModalTitle');
     const modalCopy = document.getElementById('dropdownModalCopy');
-    const modalOptions = document.getElementById('dropdownModalOptions');
-    const dropdownName = button.dataset.dropdownName || 'Dropdown';
-    let options = [];
+    const newOptionInput = document.getElementById('dropdownModalNewOption');
+    const dropdownKeyInput = document.getElementById('dropdownModalKey');
 
-    try {
-        options = JSON.parse(button.dataset.dropdownOptions || '[]');
-    } catch (error) {
-        options = [];
+    dropdownState.key = button.dataset.dropdownKey || '';
+    dropdownState.name = button.dataset.dropdownName || 'Dropdown';
+    dropdownState.options = parseDropdownOptions(button.dataset.dropdownOptions || '[]');
+
+    if (dropdownKeyInput) {
+        dropdownKeyInput.value = dropdownState.key;
     }
 
-    modalTitle.textContent = dropdownName + ' Options';
-    modalCopy.textContent = 'Add or remove options for the ' + dropdownName.toLowerCase() + ' dropdown field.';
+    if (newOptionInput) {
+        newOptionInput.value = '';
+    }
 
-    modalOptions.innerHTML = options.map(option => `
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);">
-            <span style="font-size:.84rem;color:var(--text-primary)">${option}</span>
-            <button class="btn btn-secondary btn-xs" type="button">Delete</button>
-        </div>
-    `).join('');
+    modalTitle.textContent = dropdownState.name + ' Options';
+    modalCopy.textContent = 'Add or remove options for the ' + dropdownState.name.toLowerCase() + ' dropdown field.';
 
+    renderDropdownModalOptions();
     openModal('dropdownModal');
 }
-function saveSettings() { showToast('Settings saved successfully', 'success'); }
+
+async function postDropdownAction(formData) {
+    const response = await fetch(dropdownEndpoint, {
+        method: 'POST',
+        body: formData,
+        credentials: 'same-origin',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+    });
+
+    let result = null;
+
+    try {
+        result = await response.json();
+    } catch (error) {
+        result = null;
+    }
+
+    if (!response.ok || !result || !result.success) {
+        throw new Error(result?.message || 'Unable to update dropdown.');
+    }
+
+    return result;
+}
+
+async function addDropdownOption() {
+    const addButton = document.getElementById('dropdownModalAddBtn');
+    const input = document.getElementById('dropdownModalNewOption');
+
+    if (!addButton || !input) {
+        return;
+    }
+
+    const optionLabel = input.value.trim();
+
+    if (dropdownState.key === '') {
+        showToast('Select a dropdown first.', 'error');
+        return;
+    }
+
+    if (optionLabel === '') {
+        showToast('Enter an option label.', 'info');
+        input.focus();
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('action', 'add');
+    formData.append('dropdown_key', dropdownState.key);
+    formData.append('option_label', optionLabel);
+
+    addButton.disabled = true;
+
+    try {
+        const result = await postDropdownAction(formData);
+        showToast(result.message || 'Dropdown updated.', 'success');
+        window.setTimeout(() => window.location.reload(), 350);
+    } catch (error) {
+        addButton.disabled = false;
+        showToast(error.message || 'Unable to add option.', 'error');
+    }
+}
+
+function deleteDropdownOption(button) {
+    if (!(button instanceof HTMLButtonElement)) {
+        return;
+    }
+
+    const optionId = button.dataset.optionId || '';
+    const optionLabel = button.dataset.optionLabel || 'this option';
+
+    if (dropdownState.key === '' || optionId === '') {
+        return;
+    }
+
+    confirmAction(`Delete ${optionLabel} from ${dropdownState.name}?`, async () => {
+        const formData = new FormData();
+        formData.append('action', 'delete');
+        formData.append('dropdown_key', dropdownState.key);
+        formData.append('option_id', optionId);
+
+        button.disabled = true;
+
+        try {
+            const result = await postDropdownAction(formData);
+            showToast(result.message || 'Dropdown updated.', 'success');
+            window.setTimeout(() => window.location.reload(), 350);
+        } catch (error) {
+            button.disabled = false;
+            showToast(error.message || 'Unable to delete option.', 'error');
+        }
+    });
+}
+
+document.getElementById('dropdownModalAddBtn')?.addEventListener('click', addDropdownOption);
+
+document.getElementById('dropdownModalNewOption')?.addEventListener('keydown', event => {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        addDropdownOption();
+    }
+});
+
+document.getElementById('dropdownModalOptions')?.addEventListener('click', event => {
+    const button = event.target.closest('button[data-option-id]');
+
+    if (button) {
+        deleteDropdownOption(button);
+    }
+});
+
+function saveSettings() {
+    showToast('Dropdown changes save immediately. The other tabs are still static.', 'info');
+}
 </script>
 
 <?php include '../includes/footer.php'; ?>
