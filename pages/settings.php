@@ -18,7 +18,7 @@ if ($role !== 'user') {
         <div class="page-header">
             <div>
                 <h1 class="page-heading">Settings</h1>
-                <p class="page-desc">Configure the system, categories, and access controls</p>
+                <p class="page-desc">Configure the system, dropdowns, and access controls</p>
             </div>
             <div class="header-actions">
                 <button class="btn btn-primary btn-sm" onclick="saveSettings()">
@@ -33,7 +33,7 @@ if ($role !== 'user') {
         <!-- Tabs -->
         <div class="tabs" style="max-width:600px">
             <button class="tab-btn active" onclick="switchTab('general', this)">General</button>
-            <button class="tab-btn" onclick="switchTab('categories', this)">Categories</button>
+            <button class="tab-btn" onclick="switchTab('dropdowns', this)">Dropdowns</button>
             <button class="tab-btn" onclick="switchTab('access', this)">Access</button>
             <button class="tab-btn" onclick="switchTab('backup', this)">Backup</button>
         </div>
@@ -99,25 +99,31 @@ if ($role !== 'user') {
             </div>
         </div>
 
-        <!-- Categories Tab -->
-        <div id="tab-categories" style="display:none">
+        <!-- Dropdowns Tab -->
+        <div id="tab-dropdowns" style="display:none">
             <div class="card">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-                    <div style="font-family:var(--font-main);font-size:.95rem;font-weight:700">Asset Categories</div>
-                    <button class="btn btn-primary btn-sm" onclick="openModal('catModal')">Add Category</button>
-                </div>
+                <div style="font-family:var(--font-main);font-size:.95rem;font-weight:700;margin-bottom:6px">System Dropdowns</div>
+                <p style="font-size:.84rem;color:var(--text-secondary);margin-bottom:20px">View each dropdown field used across the system and open it to manage its option list.</p>
                 <?php
-                $categories = [
-                    ['Computer',  'blue',   245, true],
-                    ['Mobile',    'teal',   62,  true],
-                    ['Furniture', 'purple', 98,  true],
-                    ['AV Equip',  'orange', 48,  true],
-                    ['Vehicle',   'slate',  23,  true],
-                    ['Printer',   'blue',   31,  true],
-                    ['Tablet',    'teal',   18,  true],
-                    ['Telecom',   'slate',  11,  false],
+                $dropdowns = [
+                    ['Age Statuses', ['New', 'Old']],
+                    ['Brands', ['Dell', 'Lenovo', 'HP', 'Acer', 'Huawei', 'Samsung']],
+                    ['Categories', ['IT Accessory', 'Hardware']],
+                    ['Companies', ['New Canaan Insurance Agency Inc.', 'NCIA Non-Life Insurance Services Agency Inc.', 'NCIA Life & Benefits Company', 'Lionhill Holdings Inc.']],
+                    ['Departments', ['IT', 'Finance', 'Marketing', 'Claims', 'Admin', 'Human Resources']],
+                    ['Deployment Statuses', ['Deployed', 'Temporary', 'Returned', 'Returned with issue/s', 'Borrowed', 'Transfer']],
+                    ['Inventory Statuses', ['Available', 'Spare', 'Missing', 'Stolen']],
+                    ['Sub Categories', ['Laptop', 'Desktop', 'Storage', 'Printer', 'Accessory']],
                 ];
-                foreach ($categories as $cat): ?>
+                foreach ($dropdowns as $dropdown):
+                    $dropdownName = $dropdown[0];
+                    $dropdownOptions = $dropdown[1];
+                    $dropdownCount = count($dropdownOptions);
+                    $dropdownPreview = implode(', ', array_slice($dropdownOptions, 0, 3));
+                    if ($dropdownCount > 3) {
+                        $dropdownPreview .= ', ...';
+                    }
+                ?>
                 <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border-light)">
                     <div style="display:flex;align-items:center;gap:12px">
                         <div style="width:34px;height:34px;border-radius:8px;background:var(--bg);display:flex;align-items:center;justify-content:center">
@@ -126,13 +132,20 @@ if ($role !== 'user') {
                             </svg>
                         </div>
                         <div>
-                            <div style="font-size:.88rem;font-weight:600"><?= $cat[0] ?></div>
-                            <div style="font-size:.75rem;color:var(--text-muted)"><?= $cat[2] ?> assets</div>
+                            <div style="font-size:.88rem;font-weight:600"><?= htmlspecialchars($dropdownName) ?></div>
+                            <div style="font-size:.75rem;color:var(--text-muted)"><?= $dropdownCount ?> options<?php if ($dropdownPreview !== ''): ?> · <?= htmlspecialchars($dropdownPreview) ?><?php endif; ?></div>
                         </div>
                     </div>
-                    <div style="display:flex;align-items:center;gap:12px">
-                        <span class="badge <?= $cat[3] ? 'badge-active' : 'badge-returned' ?>"><?= $cat[3] ? 'Active' : 'Hidden' ?></span>
-                        <button class="btn btn-secondary btn-xs">Edit</button>
+                    <div style="display:flex;align-items:center;gap:12px;flex-shrink:0">
+                        <button
+                            class="btn btn-secondary btn-xs"
+                            type="button"
+                            data-dropdown-name="<?= htmlspecialchars($dropdownName) ?>"
+                            data-dropdown-options='<?= htmlspecialchars(json_encode($dropdownOptions), ENT_QUOTES, 'UTF-8') ?>'
+                            onclick="openDropdownModal(this)"
+                        >
+                            Edit
+                        </button>
                     </div>
                 </div>
                 <?php endforeach; ?>
@@ -243,30 +256,35 @@ if ($role !== 'user') {
     </div>
 </div>
 
-<!-- Add Category Modal -->
-<div class="modal-overlay" id="catModal">
-    <div class="modal" style="max-width:400px">
+<!-- Dropdown Editor Modal -->
+<div class="modal-overlay" id="dropdownModal">
+    <div class="modal" style="max-width:520px">
         <div class="modal-header">
-            <h3 class="modal-title">Add Category</h3>
-            <button class="modal-close-btn" onclick="closeModal('catModal')">
+            <div>
+                <h3 class="modal-title" id="dropdownModalTitle">Edit Dropdown</h3>
+                <p id="dropdownModalCopy" style="margin-top:4px;font-size:.8rem;color:var(--text-secondary)">Add or remove options for the selected dropdown field.</p>
+            </div>
+            <button class="modal-close-btn" onclick="closeModal('dropdownModal')">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                     <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                 </svg>
             </button>
         </div>
-        <div style="display:flex;flex-direction:column;gap:14px">
-            <div class="form-col" style="gap:6px">
-                <label class="label">Category Name</label>
-                <input type="text" class="input" placeholder="e.g. Medical Equipment">
+        <div style="display:flex;flex-direction:column;gap:16px">
+            <div>
+                <label class="label" style="margin-bottom:8px;display:block">Current Options</label>
+                <div id="dropdownModalOptions" style="display:flex;flex-direction:column;gap:10px;max-height:280px;overflow-y:auto;padding-right:4px"></div>
             </div>
-            <div class="form-col" style="gap:6px">
-                <label class="label">Description</label>
-                <textarea class="textarea" style="min-height:70px" placeholder="Optional description"></textarea>
+            <div class="form-col" style="gap:8px">
+                <label class="label">Add New Option</label>
+                <div style="display:flex;gap:10px;align-items:center">
+                    <input type="text" class="input" placeholder="Enter new option label">
+                    <button class="btn btn-primary btn-sm" type="button">Add</button>
+                </div>
             </div>
         </div>
         <div class="modal-footer">
-            <button class="btn btn-secondary" onclick="closeModal('catModal')">Cancel</button>
-            <button class="btn btn-primary" onclick="closeModal('catModal');showToast('Category added','success')">Add</button>
+            <button class="btn btn-secondary" onclick="closeModal('dropdownModal')">Close</button>
         </div>
     </div>
 </div>
@@ -300,6 +318,31 @@ function switchTab(name, btn) {
     document.getElementById('tab-' + name).style.display = '';
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
+}
+function openDropdownModal(button) {
+    const modalTitle = document.getElementById('dropdownModalTitle');
+    const modalCopy = document.getElementById('dropdownModalCopy');
+    const modalOptions = document.getElementById('dropdownModalOptions');
+    const dropdownName = button.dataset.dropdownName || 'Dropdown';
+    let options = [];
+
+    try {
+        options = JSON.parse(button.dataset.dropdownOptions || '[]');
+    } catch (error) {
+        options = [];
+    }
+
+    modalTitle.textContent = dropdownName + ' Options';
+    modalCopy.textContent = 'Add or remove options for the ' + dropdownName.toLowerCase() + ' dropdown field.';
+
+    modalOptions.innerHTML = options.map(option => `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);">
+            <span style="font-size:.84rem;color:var(--text-primary)">${option}</span>
+            <button class="btn btn-secondary btn-xs" type="button">Delete</button>
+        </div>
+    `).join('');
+
+    openModal('dropdownModal');
 }
 function saveSettings() { showToast('Settings saved successfully', 'success'); }
 </script>
