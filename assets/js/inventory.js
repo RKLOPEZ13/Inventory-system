@@ -11,9 +11,11 @@
     const summaries = pageData.summaries || {};
     const config = pageData.config || {};
     const nextInventoryNo = pageData.nextInventoryNo || '';
+
     const statusColorMap = {
         deployment_status_id: {
             AVAILABLE: { bg: '#d1fae5', fg: '#047857' },
+            UNAVAILABLE: { bg: '#e5e7eb', fg: '#374151' },
             RETURNED: { bg: '#cffafe', fg: '#0e7490' },
             'RETURNED WITH ISSUE/S': { bg: '#fae8ff', fg: '#a21caf' },
             TEMPORARY: { bg: '#e0f2fe', fg: '#0369a1' },
@@ -21,7 +23,16 @@
             TRANSFER: { bg: '#ede9fe', fg: '#6d28d9' },
             BORROWED: { bg: '#fef9c3', fg: '#a16207' },
         },
+        inventory_status_id: {
+            AVAILABLE: { bg: '#d1fae5', fg: '#047857' },
+            SPARE: { bg: '#ede9fe', fg: '#6d28d9' },
+            'NOT AVAILABLE': { bg: '#fee2e2', fg: '#b91c1c' },
+            MISSING: { bg: '#fef3c7', fg: '#b45309' },
+            STOLEN: { bg: '#fecaca', fg: '#b91c1c' },
+            DELETED: { bg: '#e5e7eb', fg: '#374151' },
+        },
     };
+
     const columnLabels = {
         inventory_no: 'INVENTORY NO.',
         company_id: 'COMPANY',
@@ -37,6 +48,7 @@
         current_os: 'CURRENT OS',
         device_age_months: 'DEVICE AGE',
         age_status_id: 'AGE STATUS',
+        inventory_status_id: 'INVENTORY STATUS',
         deployment_status_id: 'DEPLOYMENT STATUS',
         deployed_date: 'DEPLOYMENT DATE',
         returned_date: 'RETURNED DATE',
@@ -47,6 +59,7 @@
         created_at: 'ADDED AT',
         updated_at: 'UPDATED AT',
     };
+
     const lookupLabelMaps = Object.fromEntries(
         Object.entries(lookups).map(([columnName, options]) => [
             columnName,
@@ -70,6 +83,8 @@
         },
         visibleColumns: new Set(columns.map((column) => column.name)),
         itemModalMode: 'add',
+        actionItemId: null,
+        actionMode: 'deploy',
     };
 
     const elements = {
@@ -93,6 +108,24 @@
         itemIdInput: document.getElementById('inventoryItemId'),
         itemSubmitButton: document.getElementById('inventoryItemSubmitBtn'),
         itemModalSubtext: document.getElementById('inventoryItemModalSubtext'),
+        actionForm: document.getElementById('inventoryActionForm'),
+        actionModalTitle: document.getElementById('inventoryActionModalTitle'),
+        actionModalSubtext: document.getElementById('inventoryActionModalSubtext'),
+        actionInventoryId: document.getElementById('inventoryActionInventoryId'),
+        actionItemLabel: document.getElementById('inventoryActionItemLabel'),
+        actionChoiceButtons: document.getElementById('inventoryActionChoiceButtons'),
+        actionType: document.getElementById('inventoryActionType'),
+        actionFields: document.getElementById('inventoryActionFields'),
+        actionDateNote: document.getElementById('inventoryActionDateNote'),
+        actionDeployedToWrap: document.getElementById('inventoryActionDeployedToWrap'),
+        actionDeployedTo: document.getElementById('inventoryActionDeployedTo'),
+        actionDepartmentWrap: document.getElementById('inventoryActionDepartmentWrap'),
+        actionDepartment: document.getElementById('inventoryActionDepartment'),
+        actionInventoryStatusWrap: document.getElementById('inventoryActionInventoryStatusWrap'),
+        actionInventoryStatus: document.getElementById('inventoryActionInventoryStatus'),
+        actionIssueWrap: document.getElementById('inventoryActionIssueWrap'),
+        actionIssueDescription: document.getElementById('inventoryActionIssueDescription'),
+        actionSubmitButton: document.getElementById('inventoryActionSubmitBtn'),
         summaryCards: {
             deployment_status_id: {
                 count: document.getElementById('inventorySummaryDeploymentStatusCount'),
@@ -165,6 +198,13 @@
         return lookupMap.get(normalizeLookupKey(value)) ?? null;
     }
 
+    function findLookupValueByLabel(columnName, label) {
+        const options = Array.isArray(lookups[columnName]) ? lookups[columnName] : [];
+        const normalized = String(label || '').trim().toUpperCase();
+        const match = options.find((option) => String(option.option_label || '').trim().toUpperCase() === normalized);
+        return match ? normalizeValue(match.option_value) : '';
+    }
+
     function getDisplayValue(columnName, value) {
         if (value == null || value === '') {
             return '';
@@ -220,8 +260,7 @@
             months += 12;
         }
 
-        const totalMonths = Math.max(0, (Math.max(0, years) * 12) + Math.max(0, months));
-        return String(totalMonths);
+        return String(Math.max(0, (Math.max(0, years) * 12) + Math.max(0, months)));
     }
 
     function calculateAgeStatusIdFromMonths(monthsValue) {
@@ -231,10 +270,7 @@
 
         const totalMonths = Number(monthsValue);
         const targetLabel = totalMonths >= 60 ? 'OLD' : 'NEW';
-        const options = Array.isArray(lookups.age_status_id) ? lookups.age_status_id : [];
-        const match = options.find((option) => String(option.option_label).trim().toUpperCase() === targetLabel);
-
-        return match ? normalizeValue(match.option_value) : '';
+        return findLookupValueByLabel('age_status_id', targetLabel);
     }
 
     function getAgeStatusMeta(item) {
@@ -428,6 +464,73 @@
         return classNames.join(' ');
     }
 
+    function getDeploymentStatusLabel(item) {
+        return getDisplayValue('deployment_status_id', item.deployment_status_id) || 'Available';
+    }
+
+    function getInventoryStatusLabel(item) {
+        return getDisplayValue('inventory_status_id', item.inventory_status_id) || 'Available';
+    }
+
+    function inventoryLabel(item) {
+        return [
+            item.inventory_no,
+            item.device_name,
+            item.model,
+            item.serial_number,
+        ].filter(Boolean).join(' | ');
+    }
+
+    function getPrimaryAction(item) {
+        const deploymentStatus = getDeploymentStatusLabel(item).trim().toUpperCase();
+        const inventoryStatus = getInventoryStatusLabel(item).trim().toUpperCase();
+
+        if (['DEPLOYED', 'BORROWED', 'TEMPORARY', 'TRANSFER'].includes(deploymentStatus)) {
+            return { action: 'return', label: 'Return', tone: 'btn-secondary', disabled: false, icon: 'return' };
+        }
+
+        if (inventoryStatus === 'DELETED') {
+            return { action: 'unavailable', label: 'Deleted', tone: 'btn-secondary', disabled: true, title: 'Deleted items cannot be deployed.', icon: 'blocked' };
+        }
+
+        if (['AVAILABLE', 'SPARE'].includes(inventoryStatus)) {
+            return { action: 'deploy', label: 'Deploy', tone: 'btn-deploy', disabled: false, icon: 'deploy' };
+        }
+
+        return { action: 'unavailable', label: 'Unavailable', tone: 'btn-secondary', disabled: true, title: 'Only available or spare items can be deployed.', icon: 'blocked' };
+    }
+
+    function getActionIconMarkup(iconName) {
+        if (iconName === 'deploy') {
+            return `
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 5v14"/>
+                    <path d="M5 12l7 7 7-7"/>
+                </svg>
+            `;
+        }
+
+        if (iconName === 'return') {
+            return `
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 14l-4-4 4-4"/>
+                    <path d="M5 10h11a4 4 0 0 1 0 8h-1"/>
+                </svg>
+            `;
+        }
+
+        if (iconName === 'blocked') {
+            return `
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="9"/>
+                    <path d="M8 8l8 8"/>
+                </svg>
+            `;
+        }
+
+        return '';
+    }
+
     function renderHeader() {
         const visibleColumns = getVisibleColumns();
         const headerCells = visibleColumns
@@ -475,7 +578,7 @@
                 } else if (column.name === 'age_status_id') {
                     const ageStatus = getAgeStatusMeta(item);
                     displayValue = `<span class="inventory-plain-status">${escapeHtml(ageStatus.label)}</span>`;
-                } else if (column.name === 'deployment_status_id' && resolvedValue !== '') {
+                } else if (['inventory_status_id', 'deployment_status_id'].includes(column.name) && resolvedValue !== '') {
                     const badgeStyle = getStatusBadgeStyle(column.name, resolvedValue);
                     displayValue = `
                         <span class="inventory-status-badge" style="--status-bg:${escapeHtml(badgeStyle.bg)};--status-fg:${escapeHtml(badgeStyle.fg)};">
@@ -485,8 +588,8 @@
                 } else if (resolvedValue !== '') {
                     if (column.name === 'item_description' || column.name === 'remarks') {
                         displayValue = `
-                            <span class="inventory-cell-tooltip" tabindex="0" data-tooltip="${escapeHtml(resolvedValue)}">                                
-                              ${escapeHtml(getCompactValue(column.name, value))}
+                            <span class="inventory-cell-tooltip" tabindex="0" data-tooltip="${escapeHtml(resolvedValue)}">
+                                ${escapeHtml(getCompactValue(column.name, value))}
                             </span>
                         `;
                     } else {
@@ -497,8 +600,16 @@
                 return `<td class="${cellClassName(column.name, value, item)}">${displayValue}</td>`;
             }).join('');
 
+            const primaryAction = getPrimaryAction(item);
+            const primaryDisabledAttribute = !config.canEdit || primaryAction.disabled ? 'disabled' : '';
+            const primaryTitle = !config.canEdit
+                ? 'title="Read-only access"'
+                : primaryAction.title
+                    ? `title="${escapeHtml(primaryAction.title)}"`
+                    : '';
             const disabledAttribute = config.canEdit ? '' : 'disabled';
             const disabledTitle = config.canEdit ? '' : 'title="Read-only access"';
+            const deleteDisabled = !config.canEdit || getInventoryStatusLabel(item).trim().toUpperCase() === 'DELETED';
 
             return `
                 <tr>
@@ -506,6 +617,10 @@
                     ${cells}
                     <td>
                         <div class="col-actions">
+                            <button class="btn ${escapeHtml(primaryAction.tone)} btn-xs inventory-action-btn" type="button" data-action="${escapeHtml(primaryAction.action)}" data-id="${item.inventory_id}" ${primaryDisabledAttribute} ${primaryTitle}>
+                                ${getActionIconMarkup(primaryAction.icon)}
+                                <span class="inventory-action-label">${escapeHtml(primaryAction.label)}</span>
+                            </button>
                             <button class="btn btn-secondary btn-xs inventory-action-btn" type="button" data-action="update" data-id="${item.inventory_id}" aria-label="Update item" ${disabledAttribute} ${disabledTitle}>
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M12 20h9"/>
@@ -513,7 +628,7 @@
                                 </svg>
                                 <span class="inventory-action-label">Update</span>
                             </button>
-                            <button class="btn btn-danger btn-xs inventory-action-btn" type="button" data-action="delete" data-id="${item.inventory_id}" aria-label="Delete item" ${disabledAttribute} ${disabledTitle}>
+                            <button class="btn btn-danger btn-xs inventory-action-btn" type="button" data-action="delete" data-id="${item.inventory_id}" aria-label="Delete item" ${deleteDisabled ? 'disabled' : ''} ${deleteDisabled ? 'title="Item is already marked as deleted."' : disabledTitle}>
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <polyline points="3 6 5 6 21 6"/>
                                     <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>
@@ -569,7 +684,6 @@
         elements.pagination.innerHTML = buttons.join('');
     }
 
-    // --- GLOBAL TOOLTIP LOGIC ---
     const globalTooltip = document.createElement('div');
     globalTooltip.className = 'global-tooltip';
     document.body.appendChild(globalTooltip);
@@ -577,11 +691,8 @@
     document.addEventListener('mouseover', (event) => {
         const target = event.target.closest('.inventory-cell-tooltip');
         if (target) {
-            // Get text and position
             globalTooltip.innerHTML = target.getAttribute('data-tooltip').replace(/\n/g, '<br>');
             const rect = target.getBoundingClientRect();
-            
-            // Position tooltip globally on the page
             globalTooltip.style.top = `${rect.bottom + window.scrollY + 8}px`;
             globalTooltip.style.left = `${rect.left + window.scrollX}px`;
             globalTooltip.classList.add('visible');
@@ -593,7 +704,6 @@
             globalTooltip.classList.remove('visible');
         }
     });
-    // ----------------------------
 
     function renderColumnOptions() {
         elements.columnOptions.innerHTML = columns.map((column) => `
@@ -620,25 +730,26 @@
 
     function initializeTableKeyboardSupport() {
         const scrollContainer = document.querySelector('.inventory-table-scroll');
-        if (!scrollContainer) return;
+        if (!scrollContainer) {
+            return;
+        }
 
-        // Check if table overflows horizontally
         const isScrollable = scrollContainer.scrollWidth > scrollContainer.clientWidth;
-        
-        // Set tabindex only if scrollable
         if (isScrollable) {
             scrollContainer.setAttribute('tabindex', '0');
             scrollContainer.setAttribute('role', 'region');
             scrollContainer.setAttribute('aria-label', 'Inventory table, use arrow keys to scroll');
-        } else {
-            scrollContainer.removeAttribute('tabindex');
-            scrollContainer.removeAttribute('role');
-            scrollContainer.removeAttribute('aria-label');
+            return;
         }
+
+        scrollContainer.removeAttribute('tabindex');
+        scrollContainer.removeAttribute('role');
+        scrollContainer.removeAttribute('aria-label');
     }
 
-    function lookupOptionsHtml(columnName, selectedValue, includeEmptyOption) {
-        const options = Array.isArray(lookups[columnName]) ? lookups[columnName] : [];
+    function lookupOptionsHtml(columnName, selectedValue, includeEmptyOption, optionFilter) {
+        const source = Array.isArray(lookups[columnName]) ? lookups[columnName] : [];
+        const options = typeof optionFilter === 'function' ? source.filter(optionFilter) : source;
         const initialOption = includeEmptyOption ? '<option value="">Select option</option>' : '';
 
         return initialOption + options.map((option) => {
@@ -686,15 +797,7 @@
             return `
                 <div class="form-col">
                     <label class="label" for="field_${name}">${label}</label>
-                    <input
-                        class="input"
-                        id="field_${name}"
-                        name="${name}"
-                        type="text"
-                        value="${escapeHtml(displayValue)}"
-                        readonly
-                        tabindex="-1"
-                    >
+                    <input class="input" id="field_${name}" name="${name}" type="text" value="${escapeHtml(displayValue)}" readonly tabindex="-1">
                     <div class="field-note" id="field_${name}_note">${escapeHtml(note)}</div>
                 </div>
             `;
@@ -705,16 +808,7 @@
             return `
                 <div class="form-col">
                     <label class="label" for="field_${name}">${label}</label>
-                    <input
-                        class="input"
-                        id="field_${name}"
-                        name="${name}"
-                        type="number"
-                        value="${escapeHtml(calculatedValue)}"
-                        readonly
-                        tabindex="-1"
-                        data-auto-age-field="true"
-                    >
+                    <input class="input" id="field_${name}" name="${name}" type="number" value="${escapeHtml(calculatedValue)}" readonly tabindex="-1" data-auto-age-field="true">
                     <div class="field-note">Auto-calculated from Purchase Date.</div>
                 </div>
             `;
@@ -758,15 +852,7 @@
         return `
             <div class="form-col ${fullWidth}">
                 <label class="label" for="field_${name}">${label}</label>
-                <input
-                    class="input"
-                    id="field_${name}"
-                    name="${name}"
-                    type="${type}"
-                    value="${escapeHtml(normalizeValue(value))}"
-                    ${required}
-                    ${extraAttributes}
-                >
+                <input class="input" id="field_${name}" name="${name}" type="${type}" value="${escapeHtml(normalizeValue(value))}" ${required} ${extraAttributes}>
             </div>
         `;
     }
@@ -865,47 +951,6 @@
         }
     }
 
-    function inventoryLabel(item) {
-        const parts = [
-            item.inventory_no,
-            item.device_name,
-            item.model,
-            item.serial_number,
-        ].filter(Boolean);
-
-        return parts.join(' | ');
-    }
-
-    function deployResultCells(item) {
-        const ageDetails = getDeviceAgeDetails(item);
-        const ageStatus = getAgeStatusMeta(item);
-        const inventoryStatusLabel = getDisplayValue('deployment_status_id', item.deployment_status_id);
-        const inventoryStatusStyle = getStatusBadgeStyle('deployment_status_id', inventoryStatusLabel);
-
-        return `
-            <td class="inventory-cell-code">${escapeHtml(item.inventory_no || '')}</td>
-            <td>${escapeHtml(getDisplayValue('company_id', item.company_id) || '—')}</td>
-            <td>${escapeHtml(getDisplayValue('category_id', item.category_id) || '—')}</td>
-            <td>${escapeHtml(getDisplayValue('sub_category_id', item.sub_category_id) || '—')}</td>
-            <td>${escapeHtml(getDisplayValue('brand_id', item.brand_id) || '—')}</td>
-            <td>${escapeHtml(item.model || '—')}</td>
-            <td class="inventory-cell-code">${escapeHtml(item.serial_number || '—')}</td>
-            <td>
-                <div class="inventory-age-cell inventory-age-cell-${Number(ageDetails.badge) >= 60 ? 'old' : 'new'}">
-                    <span class="inventory-age-text">${escapeHtml(ageDetails.text)}</span>
-                </div>
-            </td>
-            <td><span class="inventory-plain-status">${escapeHtml(ageStatus.label)}</span></td>
-            <td>
-                ${inventoryStatusLabel ? `
-                    <span class="inventory-status-badge" style="--status-bg:${escapeHtml(inventoryStatusStyle.bg)};--status-fg:${escapeHtml(inventoryStatusStyle.fg)};">
-                        ${escapeHtml(inventoryStatusLabel)}
-                    </span>
-                ` : '&mdash;'}
-            </td>
-        `;
-    }
-
     async function postForm(endpoint, formData) {
         const response = await fetch(endpoint, {
             method: 'POST',
@@ -944,9 +989,8 @@
                         ? getDeviceAgeDetails(item).text
                         : column.name === 'age_status_id'
                             ? getAgeStatusMeta(item).label
-                        : getDisplayValue(column.name, item[column.name]);
-                    const value = exportValue.replace(/"/g, '""');
-                    return `"${value}"`;
+                            : getDisplayValue(column.name, item[column.name]);
+                    return `"${exportValue.replace(/"/g, '""')}"`;
                 })
             );
             csvRows.push(row.join(','));
@@ -977,6 +1021,164 @@
 
         elements.columnFilter.classList.add('open');
         elements.columnToggle.setAttribute('aria-expanded', 'true');
+    }
+
+    function getCurrentActionItem() {
+        return items.find((entry) => Number(entry.inventory_id) === Number(state.actionItemId)) || null;
+    }
+
+    function getActionOptions(mode) {
+        return mode === 'return'
+            ? [
+                { value: 'return', label: 'Return' },
+                { value: 'return_issue', label: 'Return with issues' },
+                { value: 'transfer', label: 'Transfer' },
+            ]
+            : [
+                { value: 'deploy_full', label: 'Full deployment' },
+                { value: 'deploy_borrow', label: 'Borrow' },
+                { value: 'deploy_temporary', label: 'Temporary' },
+            ];
+    }
+
+    function getActionDeploymentLabel(actionType) {
+        const labelMap = {
+            deploy_full: 'Deployed',
+            deploy_borrow: 'Borrowed',
+            deploy_temporary: 'Temporary',
+            transfer: 'Transfer',
+            return: 'Returned',
+            return_issue: 'Returned with issue/s',
+        };
+
+        return labelMap[actionType] || '';
+    }
+
+    function shouldShowDeployFields(actionType) {
+        return ['deploy_full', 'deploy_borrow', 'deploy_temporary', 'transfer'].includes(actionType);
+    }
+
+    function shouldShowInventoryStatusField(actionType) {
+        return false;
+    }
+
+    function shouldShowIssueField(actionType) {
+        return actionType === 'return_issue';
+    }
+
+    function buildActionChoiceButtonsHtml(mode, selectedValue) {
+        return getActionOptions(mode).map((option) => `
+            <button
+                class="btn inventory-action-choice ${normalizeValue(selectedValue) === normalizeValue(option.value) ? 'is-active' : ''}"
+                type="button"
+                data-action-type="${escapeHtml(option.value)}"
+            >
+                ${escapeHtml(option.label)}
+            </button>
+        `).join('');
+    }
+
+    function buildDepartmentOptionsHtml(selectedValue) {
+        return lookupOptionsHtml('department_id', selectedValue, true);
+    }
+
+    function buildReturnInventoryStatusHtml(selectedValue) {
+        const allowed = new Set(['Stolen', 'Missing', 'Spare', 'Available', 'Not available', 'Deleted']);
+        return lookupOptionsHtml(
+            'inventory_status_id',
+            selectedValue,
+            true,
+            (option) => allowed.has(String(option.option_label || '').trim())
+        );
+    }
+
+    function syncActionForm() {
+        const item = getCurrentActionItem();
+        if (!item) {
+            return;
+        }
+
+        const actionType = elements.actionType.value;
+        const hasActionType = actionType !== '';
+        const showDeployFields = shouldShowDeployFields(actionType);
+        const showInventoryStatusField = shouldShowInventoryStatusField(actionType);
+        const showIssueField = shouldShowIssueField(actionType);
+
+        if (elements.actionChoiceButtons) {
+            elements.actionChoiceButtons.innerHTML = buildActionChoiceButtonsHtml(state.actionMode, actionType);
+        }
+
+        if (elements.actionFields) {
+            elements.actionFields.classList.toggle('is-active', hasActionType);
+        }
+
+        elements.actionDeployedToWrap.style.display = hasActionType && showDeployFields ? '' : 'none';
+        elements.actionDepartmentWrap.style.display = hasActionType && showDeployFields ? '' : 'none';
+        elements.actionInventoryStatusWrap.style.display = hasActionType && showInventoryStatusField ? '' : 'none';
+        elements.actionIssueWrap.style.display = hasActionType && showIssueField ? '' : 'none';
+
+        elements.actionDeployedTo.required = hasActionType && showDeployFields;
+        elements.actionDepartment.required = hasActionType && showDeployFields;
+        elements.actionInventoryStatus.required = hasActionType && showInventoryStatusField;
+        elements.actionIssueDescription.required = hasActionType && showIssueField;
+
+        if (!hasActionType) {
+            elements.actionDateNote.textContent = 'Pick an action first.';
+        } else if (showDeployFields) {
+            elements.actionDateNote.textContent = actionType === 'transfer'
+                ? 'Transfer date is recorded automatically as today.'
+                : 'Deployment date is recorded automatically as today.';
+        } else {
+            elements.actionDateNote.textContent = 'Returned date is recorded automatically as today.';
+        }
+
+        if (!hasActionType) {
+            elements.actionDeployedTo.value = '';
+            elements.actionDepartment.innerHTML = buildDepartmentOptionsHtml('');
+        } else if (actionType === 'transfer') {
+            elements.actionDeployedTo.value = item.assigned_to || '';
+            elements.actionDepartment.innerHTML = buildDepartmentOptionsHtml(item.department_id || '');
+        } else if (state.actionMode === 'return') {
+            elements.actionDeployedTo.value = '';
+            elements.actionDepartment.innerHTML = buildDepartmentOptionsHtml('');
+        }
+
+        if (!showIssueField) {
+            elements.actionIssueDescription.value = '';
+        }
+
+        if (!showInventoryStatusField) {
+            elements.actionInventoryStatus.value = '';
+        }
+
+        if (elements.actionSubmitButton) {
+            elements.actionSubmitButton.disabled = !hasActionType;
+        }
+    }
+
+    function openActionModal(item, mode) {
+        if (!config.canEdit) {
+            showToast('This account is read-only.', 'info');
+            return;
+        }
+
+        state.actionItemId = item.inventory_id;
+        state.actionMode = mode;
+        elements.actionForm.reset();
+        elements.actionInventoryId.value = item.inventory_id;
+        elements.actionItemLabel.textContent = inventoryLabel(item) || item.inventory_no || 'Selected item';
+        elements.actionModalTitle.textContent = mode === 'return' ? 'Return Item' : 'Deploy Item';
+        elements.actionModalSubtext.textContent = mode === 'return'
+            ? 'Pick the return action, then fill only the fields needed.'
+            : 'Pick the deployment action, then fill only the fields needed.';
+        elements.actionType.value = '';
+        elements.actionDepartment.innerHTML = buildDepartmentOptionsHtml('');
+        elements.actionInventoryStatus.innerHTML = buildReturnInventoryStatusHtml(findLookupValueByLabel('inventory_status_id', 'Available'));
+        elements.actionDeployedTo.value = '';
+        elements.actionIssueDescription.value = '';
+        elements.actionSubmitButton.textContent = 'Save Action';
+        syncActionForm();
+        openModal('inventoryActionModal');
     }
 
     function attachEventListeners() {
@@ -1027,6 +1229,22 @@
 
         elements.exportButton?.addEventListener('click', exportRows);
         elements.addButton?.addEventListener('click', () => openItemModal('add'));
+
+        elements.actionChoiceButtons?.addEventListener('click', (event) => {
+            const target = event.target;
+            const button = target instanceof HTMLButtonElement ? target : target.closest('button');
+            if (!(button instanceof HTMLButtonElement)) {
+                return;
+            }
+
+            const actionType = button.dataset.actionType || '';
+            if (!actionType) {
+                return;
+            }
+
+            elements.actionType.value = actionType;
+            syncActionForm();
+        });
 
         elements.columnToggle?.addEventListener('click', (event) => {
             event.stopPropagation();
@@ -1086,21 +1304,35 @@
         elements.tableBody?.addEventListener('click', (event) => {
             const target = event.target;
             const button = target instanceof HTMLButtonElement ? target : target.closest('button');
-            if (!(button instanceof HTMLButtonElement)) {
+            if (!(button instanceof HTMLButtonElement) || button.disabled) {
+                return;
+            }
+
+            const inventoryId = button.dataset.id;
+            const item = items.find((entry) => Number(entry.inventory_id) === Number(inventoryId));
+            if (!item) {
                 return;
             }
 
             if (button.dataset.action === 'update') {
-                openItemModal('update', button.dataset.id);
+                openItemModal('update', inventoryId);
+                return;
+            }
+
+            if (button.dataset.action === 'deploy') {
+                openActionModal(item, 'deploy');
+                return;
+            }
+
+            if (button.dataset.action === 'return') {
+                openActionModal(item, 'return');
                 return;
             }
 
             if (button.dataset.action === 'delete') {
-                const inventoryId = button.dataset.id;
-                const item = items.find((entry) => Number(entry.inventory_id) === Number(inventoryId));
-                const itemName = item ? inventoryLabel(item) : `item #${inventoryId}`;
+                const itemName = inventoryLabel(item) || `item #${inventoryId}`;
 
-                confirmAction(`Delete ${itemName}?`, async () => {
+                confirmAction(`Mark ${itemName} as deleted?`, async () => {
                     const formData = new FormData();
                     formData.append('inventory_id', inventoryId);
 
@@ -1108,7 +1340,7 @@
 
                     try {
                         const result = await postForm(config.deleteEndpoint, formData);
-                        showToast(result.message || 'Item deleted successfully.', 'success');
+                        showToast(result.message || 'Item marked as deleted successfully.', 'success');
                         setTimeout(() => window.location.reload(), 500);
                     } catch (error) {
                         button.disabled = false;
@@ -1150,6 +1382,42 @@
             }
         });
 
+        elements.actionForm?.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const formData = new FormData(elements.actionForm);
+            const actionType = String(formData.get('action_type') || '');
+            if (!actionType) {
+                showToast('Choose an action type first.', 'info');
+                return;
+            }
+            if (!shouldShowDeployFields(actionType)) {
+                formData.delete('deployed_to');
+                formData.delete('department_id');
+            }
+            if (!shouldShowInventoryStatusField(actionType)) {
+                formData.delete('inventory_status_id');
+            }
+            if (!shouldShowIssueField(actionType)) {
+                formData.delete('issue_description');
+            }
+
+            const originalText = elements.actionSubmitButton.textContent;
+            elements.actionSubmitButton.disabled = true;
+            elements.actionSubmitButton.textContent = 'Saving...';
+
+            try {
+                const result = await postForm(config.deployEndpoint, formData);
+                showToast(result.message || 'Action saved successfully.', 'success');
+                setTimeout(() => window.location.reload(), 500);
+            } catch (error) {
+                showToast(error.message || 'Unable to save deployment action.', 'error');
+            } finally {
+                elements.actionSubmitButton.disabled = false;
+                elements.actionSubmitButton.textContent = originalText;
+            }
+        });
+
         elements.itemForm?.addEventListener('input', (event) => {
             const target = event.target;
             if (!(target instanceof HTMLInputElement)) {
@@ -1165,10 +1433,4 @@
     renderColumnOptions();
     renderTable();
     attachEventListeners();
-
-    if (columns.some((column) => column.name === 'device_age_months')) {
-        window.setInterval(() => {
-            renderTable();
-        }, 60000);
-    }
 })();

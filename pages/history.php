@@ -95,7 +95,7 @@ include '../includes/sidebar.php';
                                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                             </svg>
                         </span>
-                        <input type="search" class="input inventory-search-input" id="historySearchInput" placeholder="Search inventory no., deployed to, deployed by, serial number, or model">
+                        <input type="search" class="input inventory-search-input" id="historySearchInput" placeholder="Search inventory no., deployed to, handle by, serial number, or model">
                     </div>
                 </div>
             </div>
@@ -127,18 +127,18 @@ include '../includes/sidebar.php';
                     <?php endforeach; ?>
                 </select>
 
-                <label class="label sr-only" for="historyDepartmentFilter">Department</label>
-                <select class="select history-filter-select inventory-filter-pill" id="historyDepartmentFilter" data-filter-column="department_id">
-                    <option value="">All Department</option>
-                    <?php foreach ($historyPageData['filters']['department_id'] as $option): ?>
-                        <option value="<?= htmlspecialchars((string) $option['option_value']) ?>"><?= htmlspecialchars($option['option_label']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-
                 <label class="label sr-only" for="historyDeploymentStatusFilter">Deployment Status</label>
                 <select class="select history-filter-select inventory-filter-pill" id="historyDeploymentStatusFilter" data-filter-column="deployment_status_id">
                     <option value="">All Deployment Status</option>
                     <?php foreach ($historyPageData['filters']['deployment_status_id'] as $option): ?>
+                        <option value="<?= htmlspecialchars((string) $option['option_value']) ?>"><?= htmlspecialchars($option['option_label']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+
+                <label class="label sr-only" for="historyInventoryStatusFilter">Inventory Status</label>
+                <select class="select history-filter-select inventory-filter-pill" id="historyInventoryStatusFilter" data-filter-column="inventory_status_id">
+                    <option value="">All Inventory Status</option>
+                    <?php foreach ($historyPageData['filters']['inventory_status_id'] as $option): ?>
                         <option value="<?= htmlspecialchars((string) $option['option_value']) ?>"><?= htmlspecialchars($option['option_label']) ?></option>
                     <?php endforeach; ?>
                 </select>

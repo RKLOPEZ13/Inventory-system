@@ -17,8 +17,10 @@ function history_log_rows(PDO $pdo): array
             dl.deployed_to,
             dl.department_id,
             dl.deployment_status_id,
+            dl.inventory_status_id,
             dl.date_deployed,
             dl.returned_date,
+            dl.issue_description,
             dl.deployed_by_user_id,
             dl.created_at,
             dl.updated_at,
@@ -28,6 +30,7 @@ function history_log_rows(PDO $pdo): array
             b.brand_name,
             d.department_name,
             ds.status_name AS deployment_status_name,
+            ist.status_name AS inventory_status_name,
             CONCAT(u.first_name, ' ', u.last_name) AS deployed_by_name
         FROM deployment_logs dl
         LEFT JOIN companies c ON c.company_id = dl.company_id
@@ -36,6 +39,7 @@ function history_log_rows(PDO $pdo): array
         LEFT JOIN brands b ON b.brand_id = dl.brand_id
         LEFT JOIN departments d ON d.department_id = dl.department_id
         LEFT JOIN deployment_statuses ds ON ds.deployment_status_id = dl.deployment_status_id
+        LEFT JOIN inventory_statuses ist ON ist.inventory_status_id = dl.inventory_status_id
         LEFT JOIN users u ON u.user_id = dl.deployed_by_user_id
         ORDER BY dl.created_at DESC, dl.deployment_log_id DESC
     ";
@@ -60,6 +64,7 @@ function history_filter_columns(): array
         'category_id',
         'department_id',
         'deployment_status_id',
+        'inventory_status_id',
     ];
 }
 
@@ -72,7 +77,7 @@ function history_summary(PDO $pdo, array $rows): array
     foreach ($rows as $row) {
         $status = strtoupper(trim((string) ($row['deployment_status_name'] ?? '')));
 
-        if ($status === 'DEPLOYED') {
+        if (in_array($status, ['DEPLOYED', 'BORROWED', 'TEMPORARY', 'TRANSFER'], true)) {
             $deployedCount += 1;
         }
 

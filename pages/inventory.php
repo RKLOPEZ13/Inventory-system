@@ -227,6 +227,61 @@ include '../includes/sidebar.php';
     </div>
 </div>
 
+<div class="modal-overlay" id="inventoryActionModal">
+    <div class="modal inventory-deploy-modal inventory-workflow-modal">
+        <div class="modal-header inventory-deploy-modal-header">
+            <div>
+                <span class="inventory-modal-kicker">Deployment Action</span>
+                <h3 class="modal-title" id="inventoryActionModalTitle">Deploy Item</h3>
+                <p class="modal-subtext inventory-item-modal-subtext" id="inventoryActionModalSubtext">Choose the action type, then fill out the required details.</p>
+            </div>
+        </div>
+
+        <form id="inventoryActionForm" class="inventory-deploy-form">
+            <input type="hidden" name="inventory_id" id="inventoryActionInventoryId">
+            <input type="hidden" name="action_type" id="inventoryActionType">
+
+            <div class="inventory-deploy-selected" id="inventoryActionItemLabel">No item selected.</div>
+
+            <div class="form-col inventory-action-choice-shell">
+                <label class="label">Action Type</label>
+                <div class="inventory-action-choice-grid" id="inventoryActionChoiceButtons"></div>
+            </div>
+
+            <div class="inventory-action-panel" id="inventoryActionFields">
+                <div class="form-row inventory-deploy-grid">
+                    <div class="field-note form-full" id="inventoryActionDateNote">The action date is recorded automatically.</div>
+
+                    <div class="form-col" id="inventoryActionDeployedToWrap">
+                        <label class="label" for="inventoryActionDeployedTo">Deployed To</label>
+                        <input class="input" id="inventoryActionDeployedTo" name="deployed_to" type="text">
+                    </div>
+
+                    <div class="form-col" id="inventoryActionDepartmentWrap">
+                        <label class="label" for="inventoryActionDepartment">Department</label>
+                        <select class="select" id="inventoryActionDepartment" name="department_id"></select>
+                    </div>
+
+                    <div class="form-col" id="inventoryActionInventoryStatusWrap">
+                        <label class="label" for="inventoryActionInventoryStatus">Inventory Status</label>
+                        <select class="select" id="inventoryActionInventoryStatus" name="inventory_status_id"></select>
+                    </div>
+
+                    <div class="form-col form-full" id="inventoryActionIssueWrap">
+                        <label class="label" for="inventoryActionIssueDescription">Issue Description</label>
+                        <textarea class="textarea" id="inventoryActionIssueDescription" name="issue_description" rows="3"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary" type="button" onclick="closeModal('inventoryActionModal')">Cancel</button>
+                <button class="btn btn-primary" type="submit" id="inventoryActionSubmitBtn">Save Action</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 window.inventoryPageData = <?= json_encode([
     'columns' => $inventoryPageData['columns'],
@@ -242,6 +297,7 @@ window.inventoryPageData = <?= json_encode([
         'canEdit' => $canEditInventory,
         'saveEndpoint' => '../api/inventory/save.php',
         'deleteEndpoint' => '../api/inventory/delete.php',
+        'deployEndpoint' => '../api/inventory/deploy.php',
     ],
 ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 </script>

@@ -14,7 +14,7 @@ try {
     }
 
     $pdo->beginTransaction();
-    $result = inventory_delete_item($pdo, $inventoryId);
+    $result = inventory_delete_item($pdo, $inventoryId, inventory_default_actor_id());
 
     if (!$result['success']) {
         $pdo->rollBack();
@@ -30,4 +30,3 @@ try {
 
     inventory_api_handle_exception($exception);
 }
-

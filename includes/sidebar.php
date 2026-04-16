@@ -9,7 +9,6 @@ $nav = [
     'main' => [
         ['id' => 'dashboard', 'label' => 'Dashboard',  'icon' => 'grid',       'href' => 'dashboard.php'],
         ['id' => 'inventory', 'label' => 'Inventory',  'icon' => 'package',    'href' => 'inventory.php', 'badge' => '12'],
-        ['id' => 'deployment','label' => 'Deployment', 'icon' => 'package',    'href' => 'deployment.php'],
         ['id' => 'history',   'label' => 'History Log','icon' => 'clock',      'href' => 'history.php'],
         ['id' => 'reports',   'label' => 'Reports',    'icon' => 'bar-chart',  'href' => 'reports.php'],
     ],

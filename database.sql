@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Apr 15, 2026 at 09:46 AM
+-- Generation Time: Apr 16, 2026 at 07:12 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -234,7 +234,8 @@ INSERT INTO `deployment_statuses` (`deployment_status_id`, `status_name`, `descr
 (3, 'Temporary', 'Temporary deployment', 3, 1, '2026-04-12 01:43:26', '2026-04-12 01:43:26'),
 (4, 'Deployed', 'Currently deployed', 4, 1, '2026-04-12 01:43:26', '2026-04-12 01:43:26'),
 (5, 'Transfer', 'Transferred to another custodian/department/company', 5, 1, '2026-04-12 01:43:26', '2026-04-12 01:43:26'),
-(6, 'Borrowed', 'Borrowed item', 6, 1, '2026-04-12 01:43:26', '2026-04-12 01:43:26');
+(6, 'Borrowed', 'Borrowed item', 6, 1, '2026-04-12 01:43:26', '2026-04-12 01:43:26'),
+(7, 'Available', 'Deployment Statuses option', 7, 1, '2026-04-16 03:03:59', '2026-04-16 03:03:59');
 
 -- --------------------------------------------------------
 
@@ -258,7 +259,6 @@ CREATE TABLE `inventory` (
   `device_name` varchar(150) DEFAULT NULL,
   `current_os` varchar(100) DEFAULT NULL,
   `age_status_id` bigint(20) UNSIGNED DEFAULT NULL,
-  `inventory_status_id` bigint(20) UNSIGNED NOT NULL,
   `deployment_status_id` bigint(20) UNSIGNED DEFAULT NULL,
   `deployed_date` date DEFAULT NULL,
   `returned_date` date DEFAULT NULL,
@@ -269,6 +269,13 @@ CREATE TABLE `inventory` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `inventory`
+--
+
+INSERT INTO `inventory` (`inventory_id`, `inventory_no`, `company_id`, `category_id`, `sub_category_id`, `brand_id`, `model`, `item_description`, `serial_number`, `assigned_to`, `department_id`, `mac_address`, `device_name`, `current_os`, `age_status_id`, `deployment_status_id`, `deployed_date`, `returned_date`, `purchase_date`, `purchase_month`, `purchase_year`, `remarks`, `created_at`, `updated_at`) VALUES
+(10, 'NCIA-0001', 1, 2, 2, 10, NULL, 'sdfs', 'sdfsd', NULL, NULL, 'sdfsf', 'sfddsf', 'sdfsfs', 1, 7, NULL, NULL, '2026-04-10', 'April', '2026', 'sdfsdfsf', '2026-04-16 01:37:11', '2026-04-16 03:18:20');
 
 --
 -- Triggers `inventory`
@@ -294,33 +301,6 @@ CREATE TRIGGER `trg_inventory_before_update` BEFORE UPDATE ON `inventory` FOR EA
 END
 $$
 DELIMITER ;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `inventory_statuses`
---
-
-CREATE TABLE `inventory_statuses` (
-  `inventory_status_id` bigint(20) UNSIGNED NOT NULL,
-  `status_name` varchar(50) NOT NULL,
-  `description` varchar(255) DEFAULT NULL,
-  `sort_order` int(11) NOT NULL DEFAULT 0,
-  `is_active` tinyint(1) NOT NULL DEFAULT 1,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Dumping data for table `inventory_statuses`
---
-
-INSERT INTO `inventory_statuses` (`inventory_status_id`, `status_name`, `description`, `sort_order`, `is_active`, `created_at`, `updated_at`) VALUES
-(7, 'STOLEN', 'Item was stolen', 7, 1, '2026-04-12 01:43:26', '2026-04-12 09:50:01'),
-(8, 'MISSING', 'Item is missing', 8, 1, '2026-04-12 01:43:26', '2026-04-12 09:50:06'),
-(9, 'SPARE', 'Spare / standby unit', 9, 1, '2026-04-12 01:43:26', '2026-04-12 09:50:10'),
-(10, 'AVAILABLE', 'Available for deployment or use', 10, 1, '2026-04-12 01:43:26', '2026-04-12 09:50:15'),
-(11, 'NOT AVAILABLE', 'Item is currently not available', 11, 1, '2026-04-14 02:25:17', '2026-04-14 02:25:29');
 
 -- --------------------------------------------------------
 
@@ -498,18 +478,10 @@ ALTER TABLE `inventory`
   ADD KEY `idx_inventory_purchase_date` (`purchase_date`),
   ADD KEY `idx_inventory_device_name` (`device_name`),
   ADD KEY `idx_inventory_model` (`model`),
-  ADD KEY `idx_inventory_inventory_status_id` (`inventory_status_id`),
   ADD KEY `idx_inventory_deployment_status_id` (`deployment_status_id`),
   ADD KEY `idx_inventory_deployed_date` (`deployed_date`),
   ADD KEY `idx_inventory_returned_date` (`returned_date`),
   ADD KEY `idx_inventory_serial_number` (`serial_number`);
-
---
--- Indexes for table `inventory_statuses`
---
-ALTER TABLE `inventory_statuses`
-  ADD PRIMARY KEY (`inventory_status_id`),
-  ADD UNIQUE KEY `uq_inventory_statuses_name` (`status_name`);
 
 --
 -- Indexes for table `inventory_update_logs`
@@ -548,7 +520,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `age_statuses`
 --
 ALTER TABLE `age_statuses`
-  MODIFY `age_status_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `age_status_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT for table `brands`
@@ -560,7 +532,7 @@ ALTER TABLE `brands`
 -- AUTO_INCREMENT for table `categories`
 --
 ALTER TABLE `categories`
-  MODIFY `category_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `category_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `companies`
@@ -584,19 +556,13 @@ ALTER TABLE `deployment_logs`
 -- AUTO_INCREMENT for table `deployment_statuses`
 --
 ALTER TABLE `deployment_statuses`
-  MODIFY `deployment_status_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `deployment_status_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `inventory`
 --
 ALTER TABLE `inventory`
-  MODIFY `inventory_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
-
---
--- AUTO_INCREMENT for table `inventory_statuses`
---
-ALTER TABLE `inventory_statuses`
-  MODIFY `inventory_status_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `inventory_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `inventory_update_logs`
@@ -643,7 +609,6 @@ ALTER TABLE `inventory`
   ADD CONSTRAINT `fk_inventory_company` FOREIGN KEY (`company_id`) REFERENCES `companies` (`company_id`) ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_inventory_department` FOREIGN KEY (`department_id`) REFERENCES `departments` (`department_id`) ON DELETE SET NULL ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_inventory_deployment_status` FOREIGN KEY (`deployment_status_id`) REFERENCES `deployment_statuses` (`deployment_status_id`) ON DELETE SET NULL ON UPDATE CASCADE,
-  ADD CONSTRAINT `fk_inventory_inventory_status` FOREIGN KEY (`inventory_status_id`) REFERENCES `inventory_statuses` (`inventory_status_id`) ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_inventory_sub_category` FOREIGN KEY (`sub_category_id`) REFERENCES `sub_categories` (`sub_category_id`) ON UPDATE CASCADE;
 
 --

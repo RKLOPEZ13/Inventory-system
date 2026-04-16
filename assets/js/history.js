@@ -14,21 +14,36 @@
             category_id: '',
             department_id: '',
             deployment_status_id: '',
+            inventory_status_id: '',
         },
     };
 
     const statusColorMap = {
-        RETURNED: { bg: '#cffafe', fg: '#0e7490' },
-        'RETURNED WITH ISSUE/S': { bg: '#fae8ff', fg: '#a21caf' },
-        TEMPORARY: { bg: '#e0f2fe', fg: '#0369a1' },
-        DEPLOYED: { bg: '#d1fae5', fg: '#047857' },
-        TRANSFER: { bg: '#ede9fe', fg: '#6d28d9' },
-        BORROWED: { bg: '#fef9c3', fg: '#a16207' },
+        deployment_status_name: {
+            AVAILABLE: { bg: '#d1fae5', fg: '#047857' },
+            UNAVAILABLE: { bg: '#e5e7eb', fg: '#374151' },
+            RETURNED: { bg: '#cffafe', fg: '#0e7490' },
+            'RETURNED WITH ISSUE/S': { bg: '#fae8ff', fg: '#a21caf' },
+            TEMPORARY: { bg: '#e0f2fe', fg: '#0369a1' },
+            DEPLOYED: { bg: '#d1fae5', fg: '#047857' },
+            TRANSFER: { bg: '#ede9fe', fg: '#6d28d9' },
+            BORROWED: { bg: '#fef9c3', fg: '#a16207' },
+        },
+        inventory_status_name: {
+            AVAILABLE: { bg: '#d1fae5', fg: '#047857' },
+            SPARE: { bg: '#ede9fe', fg: '#6d28d9' },
+            'NOT AVAILABLE': { bg: '#fee2e2', fg: '#b91c1c' },
+            MISSING: { bg: '#fef3c7', fg: '#b45309' },
+            STOLEN: { bg: '#fecaca', fg: '#b91c1c' },
+            DELETED: { bg: '#e5e7eb', fg: '#374151' },
+        },
     };
 
     const columns = [
         { name: 'log_code', label: 'LOG ID' },
         { name: 'inventory_no', label: 'INVENTORY NO.' },
+        { name: 'inventory_status_name', label: 'INVENTORY STATUS' },
+        { name: 'deployment_status_name', label: 'DEPLOYMENT STATUS' },
         { name: 'company_name', label: 'COMPANY' },
         { name: 'category_name', label: 'CATEGORY' },
         { name: 'sub_category_name', label: 'SUB CATEGORY' },
@@ -37,10 +52,10 @@
         { name: 'serial_number', label: 'SERIAL NUMBER' },
         { name: 'deployed_to', label: 'DEPLOYED TO' },
         { name: 'department_name', label: 'DEPARTMENT' },
-        { name: 'deployment_status_name', label: 'DEPLOYMENT STATUS' },
         { name: 'date_deployed', label: 'DATE DEPLOYED' },
         { name: 'returned_date', label: 'RETURNED DATE' },
-        { name: 'deployed_by_name', label: 'DEPLOYED BY' },
+        { name: 'issue_description', label: 'ISSUE DESCRIPTION' },
+        { name: 'deployed_by_name', label: 'HANDLE BY' },
         { name: 'created_at', label: 'LOGGED AT' },
     ];
 
@@ -105,8 +120,9 @@
         });
     }
 
-    function getStatusBadgeStyle(label) {
-        return statusColorMap[String(label || '').trim().toUpperCase()] || { bg: '#f4f4f5', fg: '#3f3f46' };
+    function getStatusBadgeStyle(columnName, label) {
+        const normalized = String(label || '').trim().toUpperCase();
+        return statusColorMap[columnName]?.[normalized] || { bg: '#f4f4f5', fg: '#3f3f46' };
     }
 
     function getCellValue(columnName, log) {
@@ -188,8 +204,8 @@
             const cells = columns.map((column) => {
                 const value = getCellValue(column.name, log);
 
-                if (column.name === 'deployment_status_name' && value) {
-                    const badgeStyle = getStatusBadgeStyle(value);
+                if (['deployment_status_name', 'inventory_status_name'].includes(column.name) && value) {
+                    const badgeStyle = getStatusBadgeStyle(column.name, value);
                     return `
                         <td>
                             <span class="inventory-status-badge" style="--status-bg:${escapeHtml(badgeStyle.bg)};--status-fg:${escapeHtml(badgeStyle.fg)};">
@@ -199,7 +215,7 @@
                     `;
                 }
 
-                if (column.name === 'log_code' || column.name === 'inventory_no' || column.name === 'serial_number') {
+                if (['log_code', 'inventory_no', 'serial_number'].includes(column.name)) {
                     return `<td class="inventory-cell-code">${escapeHtml(value || '—')}</td>`;
                 }
 

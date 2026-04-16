@@ -18,6 +18,7 @@ function settings_dropdown_definitions(): array
         'company_id' => 'Companies',
         'department_id' => 'Departments',
         'deployment_status_id' => 'Deployment Statuses',
+        'inventory_status_id' => 'Inventory Statuses',
         'sub_category_id' => 'Sub Categories',
     ];
     $references = [
@@ -47,6 +48,10 @@ function settings_dropdown_definitions(): array
             ['table' => 'inventory', 'column' => 'deployment_status_id'],
             ['table' => 'deployment_logs', 'column' => 'deployment_status_id'],
         ],
+        'inventory_status_id' => [
+            ['table' => 'inventory', 'column' => 'inventory_status_id'],
+            ['table' => 'deployment_logs', 'column' => 'inventory_status_id'],
+        ],
         'sub_category_id' => [
             ['table' => 'inventory', 'column' => 'sub_category_id'],
             ['table' => 'deployment_logs', 'column' => 'sub_category_id'],
@@ -68,7 +73,7 @@ function settings_dropdown_definitions(): array
         $definition['code_column'] = in_array($key, ['company_id', 'department_id'], true)
             ? ($key === 'company_id' ? 'company_code' : 'department_code')
             : null;
-        $definition['sort_column'] = in_array($key, ['deployment_status_id'], true)
+        $definition['sort_column'] = in_array($key, ['deployment_status_id', 'inventory_status_id'], true)
             ? 'sort_order'
             : null;
 
