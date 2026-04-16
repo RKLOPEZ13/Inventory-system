@@ -8,14 +8,18 @@
     const items = Array.isArray(pageData.items) ? pageData.items : [];
     const formColumns = Array.isArray(pageData.formColumns) ? pageData.formColumns : [];
     const lookups = pageData.lookups || {};
+    const summaries = pageData.summaries || {};
     const config = pageData.config || {};
     const nextInventoryNo = pageData.nextInventoryNo || '';
     const statusColorMap = {
-        inventory_status_id: {
-            STOLEN: { bg: '#fee2e2', fg: '#b91c1c' },
-            MISSING: { bg: '#ffedd5', fg: '#c2410c' },
-            SPARE: { bg: '#ccfbf1', fg: '#0f766e' },
-            AVAILABLE: { bg: '#dcfce7', fg: '#15803d' },
+        deployment_status_id: {
+            AVAILABLE: { bg: '#d1fae5', fg: '#047857' },
+            RETURNED: { bg: '#cffafe', fg: '#0e7490' },
+            'RETURNED WITH ISSUE/S': { bg: '#fae8ff', fg: '#a21caf' },
+            TEMPORARY: { bg: '#e0f2fe', fg: '#0369a1' },
+            DEPLOYED: { bg: '#d1fae5', fg: '#047857' },
+            TRANSFER: { bg: '#ede9fe', fg: '#6d28d9' },
+            BORROWED: { bg: '#fef9c3', fg: '#a16207' },
         },
     };
     const columnLabels = {
@@ -33,7 +37,6 @@
         current_os: 'CURRENT OS',
         device_age_months: 'DEVICE AGE',
         age_status_id: 'AGE STATUS',
-        inventory_status_id: 'INVENTORY STATUS',
         deployment_status_id: 'DEPLOYMENT STATUS',
         deployed_date: 'DEPLOYMENT DATE',
         returned_date: 'RETURNED DATE',
@@ -63,7 +66,7 @@
         filters: {
             category_id: '',
             sub_category_id: '',
-            inventory_status_id: '',
+            deployment_status_id: '',
         },
         visibleColumns: new Set(columns.map((column) => column.name)),
         itemModalMode: 'add',
@@ -90,6 +93,24 @@
         itemIdInput: document.getElementById('inventoryItemId'),
         itemSubmitButton: document.getElementById('inventoryItemSubmitBtn'),
         itemModalSubtext: document.getElementById('inventoryItemModalSubtext'),
+        summaryCards: {
+            deployment_status_id: {
+                count: document.getElementById('inventorySummaryDeploymentStatusCount'),
+                note: document.getElementById('inventorySummaryDeploymentStatusNote'),
+            },
+            company_id: {
+                count: document.getElementById('inventorySummaryCompanyCount'),
+                note: document.getElementById('inventorySummaryCompanyNote'),
+            },
+            category_id: {
+                count: document.getElementById('inventorySummaryCategoryCount'),
+                note: document.getElementById('inventorySummaryCategoryNote'),
+            },
+            age_status_id: {
+                count: document.getElementById('inventorySummaryAgeStatusCount'),
+                note: document.getElementById('inventorySummaryAgeStatusNote'),
+            },
+        },
     };
 
     function escapeHtml(value) {
@@ -278,6 +299,61 @@
         return columns.filter((column) => state.visibleColumns.has(column.name));
     }
 
+    function getSummaryValue(columnName, item) {
+        if (columnName === 'age_status_id') {
+            return getAgeStatusMeta(item).label || 'Unspecified';
+        }
+
+        return getDisplayValue(columnName, item[columnName]) || 'Unspecified';
+    }
+
+    function getSummaryMetric(columnName, filteredItems) {
+        const fallback = summaries[columnName] || {};
+
+        if (!filteredItems.length) {
+            return {
+                topLabel: 'No data',
+                topCount: 0,
+                distinctCount: 0,
+                distinctLabel: fallback.distinct_label || 'values',
+            };
+        }
+
+        const counts = new Map();
+
+        filteredItems.forEach((item) => {
+            const label = getSummaryValue(columnName, item);
+            counts.set(label, (counts.get(label) || 0) + 1);
+        });
+
+        const ranked = Array.from(counts.entries()).sort((left, right) => {
+            if (right[1] !== left[1]) {
+                return right[1] - left[1];
+            }
+
+            return left[0].localeCompare(right[0]);
+        });
+
+        return {
+            topLabel: ranked[0]?.[0] || 'No data',
+            topCount: ranked[0]?.[1] || 0,
+            distinctCount: counts.size,
+            distinctLabel: fallback.distinct_label || 'values',
+        };
+    }
+
+    function renderSummaryCards(filteredItems) {
+        Object.entries(elements.summaryCards).forEach(([columnName, nodes]) => {
+            if (!nodes.count || !nodes.note) {
+                return;
+            }
+
+            const metric = getSummaryMetric(columnName, filteredItems);
+            nodes.count.textContent = String(metric.topCount);
+            nodes.note.textContent = `Top: ${metric.topLabel} | ${metric.distinctCount} ${metric.distinctLabel}`;
+        });
+    }
+
     function getSearchableValue(columnName, item) {
         if (columnName === 'device_age_months') {
             return getDeviceAgeDetails(item).text;
@@ -399,7 +475,7 @@
                 } else if (column.name === 'age_status_id') {
                     const ageStatus = getAgeStatusMeta(item);
                     displayValue = `<span class="inventory-plain-status">${escapeHtml(ageStatus.label)}</span>`;
-                } else if ((column.name === 'inventory_status_id' || column.name === 'deployment_status_id') && resolvedValue !== '') {
+                } else if (column.name === 'deployment_status_id' && resolvedValue !== '') {
                     const badgeStyle = getStatusBadgeStyle(column.name, resolvedValue);
                     displayValue = `
                         <span class="inventory-status-badge" style="--status-bg:${escapeHtml(badgeStyle.bg)};--status-fg:${escapeHtml(badgeStyle.fg)};">
@@ -534,6 +610,7 @@
 
     function renderTable() {
         const filteredItems = getFilteredItems();
+        renderSummaryCards(filteredItems);
         renderHeader();
         renderBody(filteredItems);
         renderSummary(filteredItems);
@@ -802,8 +879,8 @@
     function deployResultCells(item) {
         const ageDetails = getDeviceAgeDetails(item);
         const ageStatus = getAgeStatusMeta(item);
-        const inventoryStatusLabel = getDisplayValue('inventory_status_id', item.inventory_status_id);
-        const inventoryStatusStyle = getStatusBadgeStyle('inventory_status_id', inventoryStatusLabel);
+        const inventoryStatusLabel = getDisplayValue('deployment_status_id', item.deployment_status_id);
+        const inventoryStatusStyle = getStatusBadgeStyle('deployment_status_id', inventoryStatusLabel);
 
         return `
             <td class="inventory-cell-code">${escapeHtml(item.inventory_no || '')}</td>

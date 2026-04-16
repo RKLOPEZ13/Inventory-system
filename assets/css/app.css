@@ -997,6 +997,23 @@ button { cursor: pointer; font-family: var(--font-body); }
     gap: 16px;
 }
 
+.inventory-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.inventory-summary-card {
+    padding: 16px;
+}
+
+.inventory-summary-note {
+    margin-top: -4px;
+    font-size: .78rem;
+    color: var(--text-secondary);
+    line-height: 1.45;
+}
+
 .inventory-header-actions {
     flex-wrap: wrap;
     justify-content: flex-end;
@@ -1605,6 +1622,7 @@ button { cursor: pointer; font-family: var(--font-body); }
 @media (max-width: 1024px) {
     .stat-cards { grid-template-columns: repeat(2, 1fr); }
     .history-summary-grid { grid-template-columns: repeat(2, 1fr); }
+    .inventory-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .inventory-deploy-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .inventory-deploy-grid .form-col:last-child { grid-column: span 2; }
 }
@@ -1657,6 +1675,7 @@ button { cursor: pointer; font-family: var(--font-body); }
         width: min(100%, 360px);
     }
     .history-summary-grid { grid-template-columns: 1fr; }
+    .inventory-summary-grid { grid-template-columns: 1fr; }
     .inventory-deploy-grid { grid-template-columns: 1fr; }
     .inventory-deploy-grid .form-col:last-child { grid-column: auto; }
     .inventory-deploy-modal {

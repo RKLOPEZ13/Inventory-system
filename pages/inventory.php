@@ -9,6 +9,7 @@ require_once '../includes/inventory_helpers.php';
 
 $inventoryPageData = inventory_page_payload($pdo);
 $inventoryCount = count($inventoryPageData['items']);
+$inventorySummaries = $inventoryPageData['summaries'];
 
 include '../includes/header.php';
 include '../includes/sidebar.php';
@@ -39,6 +40,69 @@ include '../includes/sidebar.php';
                   </svg>
                   Add Item
               </button>
+            </div>
+        </div>
+
+        <div class="inventory-summary-grid" aria-label="Inventory summaries">
+            <div class="stat-card inventory-summary-card">
+                <div class="stat-card-top">
+                    <div class="stat-card-icon history-stat-icon history-stat-green">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2v20"/><path d="M2 12h20"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="stat-card-value" id="inventorySummaryDeploymentStatusCount"><?= (int) $inventorySummaries['deployment_status_id']['top_count'] ?></div>
+                <div class="stat-card-label"><?= htmlspecialchars($inventorySummaries['deployment_status_id']['title']) ?></div>
+                <div class="inventory-summary-note" id="inventorySummaryDeploymentStatusNote">
+                    Top: <?= htmlspecialchars($inventorySummaries['deployment_status_id']['top_label']) ?> | <?= (int) $inventorySummaries['deployment_status_id']['distinct_count'] ?> <?= htmlspecialchars($inventorySummaries['deployment_status_id']['distinct_label']) ?>
+                </div>
+            </div>
+
+            <div class="stat-card inventory-summary-card">
+                <div class="stat-card-top">
+                    <div class="stat-card-icon history-stat-icon history-stat-blue">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 10h.01"/><path d="M9 14h.01"/><path d="M15 10h.01"/><path d="M15 14h.01"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="stat-card-value" id="inventorySummaryCompanyCount"><?= (int) $inventorySummaries['company_id']['top_count'] ?></div>
+                <div class="stat-card-label"><?= htmlspecialchars($inventorySummaries['company_id']['title']) ?></div>
+                <div class="inventory-summary-note" id="inventorySummaryCompanyNote">
+                    Top: <?= htmlspecialchars($inventorySummaries['company_id']['top_label']) ?> | <?= (int) $inventorySummaries['company_id']['distinct_count'] ?> <?= htmlspecialchars($inventorySummaries['company_id']['distinct_label']) ?>
+                </div>
+            </div>
+
+            <div class="stat-card inventory-summary-card">
+                <div class="stat-card-top">
+                    <div class="stat-card-icon history-stat-icon history-stat-cyan">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                            <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="stat-card-value" id="inventorySummaryCategoryCount"><?= (int) $inventorySummaries['category_id']['top_count'] ?></div>
+                <div class="stat-card-label"><?= htmlspecialchars($inventorySummaries['category_id']['title']) ?></div>
+                <div class="inventory-summary-note" id="inventorySummaryCategoryNote">
+                    Top: <?= htmlspecialchars($inventorySummaries['category_id']['top_label']) ?> | <?= (int) $inventorySummaries['category_id']['distinct_count'] ?> <?= htmlspecialchars($inventorySummaries['category_id']['distinct_label']) ?>
+                </div>
+            </div>
+
+            <div class="stat-card inventory-summary-card">
+                <div class="stat-card-top">
+                    <div class="stat-card-icon history-stat-icon history-stat-violet">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="stat-card-value" id="inventorySummaryAgeStatusCount"><?= (int) $inventorySummaries['age_status_id']['top_count'] ?></div>
+                <div class="stat-card-label"><?= htmlspecialchars($inventorySummaries['age_status_id']['title']) ?></div>
+                <div class="inventory-summary-note" id="inventorySummaryAgeStatusNote">
+                    Top: <?= htmlspecialchars($inventorySummaries['age_status_id']['top_label']) ?> | <?= (int) $inventorySummaries['age_status_id']['distinct_count'] ?> <?= htmlspecialchars($inventorySummaries['age_status_id']['distinct_label']) ?>
+                </div>
             </div>
         </div>
 
@@ -85,10 +149,10 @@ include '../includes/sidebar.php';
                     <?php endforeach; ?>
                 </select>
 
-                <label class="label sr-only" for="inventoryStatusFilter">Inventory Status</label>
-                <select class="select inventory-filter-select inventory-filter-pill" id="inventoryStatusFilter" data-filter-column="inventory_status_id">
-                    <option value="">All Inventory Status</option>
-                    <?php foreach ($inventoryPageData['filters']['inventory_status_id'] as $option): ?>
+                <label class="label sr-only" for="deploymentStatusFilter">Deployment Status</label>
+                <select class="select inventory-filter-select inventory-filter-pill" id="deploymentStatusFilter" data-filter-column="deployment_status_id">
+                    <option value="">All Deployment Status</option>
+                    <?php foreach ($inventoryPageData['filters']['deployment_status_id'] as $option): ?>
                         <option value="<?= htmlspecialchars((string) $option['option_value']) ?>"><?= htmlspecialchars($option['option_label']) ?></option>
                     <?php endforeach; ?>
                 </select>
@@ -169,6 +233,7 @@ window.inventoryPageData = <?= json_encode([
     'items' => $inventoryPageData['items'],
     'filters' => $inventoryPageData['filters'],
     'lookups' => $inventoryPageData['lookups'],
+    'summaries' => $inventoryPageData['summaries'],
     'formColumns' => $inventoryPageData['form_columns'],
     'nextInventoryNo' => $inventoryPageData['next_inventory_no'],
     'currentUserName' => inventory_default_actor_name($pdo),

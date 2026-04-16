@@ -41,12 +41,6 @@ function inventory_lookup_definitions(): array
             'label' => 'status_name',
             'order' => 'status_name',
         ],
-        'inventory_status_id' => [
-            'table' => 'inventory_statuses',
-            'value' => 'inventory_status_id',
-            'label' => 'status_name',
-            'order' => 'sort_order, status_name',
-        ],
         'deployment_status_id' => [
             'table' => 'deployment_statuses',
             'value' => 'deployment_status_id',
@@ -61,7 +55,7 @@ function inventory_filter_columns(): array
     return [
         'category_id',
         'sub_category_id',
-        'inventory_status_id',
+        'deployment_status_id',
     ];
 }
 
@@ -70,9 +64,9 @@ function inventory_hidden_table_columns(): array
     return [
         'assigned_to',
         'department_id',
-        'deployment_status_id',
         'deployed_date',
         'returned_date',
+        'inventory_status_id',
     ];
 }
 
@@ -81,9 +75,16 @@ function inventory_hidden_form_columns(): array
     return [
         'assigned_to',
         'department_id',
-        'deployment_status_id',
         'deployed_date',
         'returned_date',
+        'inventory_status_id',
+    ];
+}
+
+function inventory_removed_columns(): array
+{
+    return [
+        'inventory_status_id',
     ];
 }
 
@@ -214,9 +215,15 @@ function inventory_schema_columns(PDO $pdo): array
     $statement = $pdo->query($sql);
     $columns = [];
 
+    $removedColumns = array_flip(inventory_removed_columns());
+
     foreach ($statement->fetchAll() as $column) {
         $name = $column['COLUMN_NAME'];
         $dataType = strtolower((string) $column['DATA_TYPE']);
+
+        if (isset($removedColumns[$name])) {
+            continue;
+        }
 
         $columns[] = [
             'name' => $name,
@@ -317,6 +324,91 @@ function inventory_find_item(PDO $pdo, int $inventoryId): ?array
     $item = $statement->fetch();
 
     return $item ?: null;
+}
+
+function inventory_lookup_label_maps(array $lookups): array
+{
+    $maps = [];
+
+    foreach ($lookups as $columnName => $options) {
+        $maps[$columnName] = [];
+
+        foreach ($options as $option) {
+            $maps[$columnName][(string) $option['option_value']] = (string) $option['option_label'];
+        }
+    }
+
+    return $maps;
+}
+
+function inventory_summary_label(PDO $pdo, array $item, string $columnName, array $lookupMaps): string
+{
+    if ($columnName === 'age_status_id') {
+        $ageStatusId = $item['age_status_id'] ?? null;
+
+        if (($ageStatusId === null || $ageStatusId === '') && !empty($item['purchase_date'])) {
+            $deviceAgeMonths = inventory_calculate_device_age_months((string) $item['purchase_date']);
+            $ageStatusId = inventory_resolve_age_status_id($pdo, $deviceAgeMonths);
+        }
+
+        $resolved = $lookupMaps['age_status_id'][(string) $ageStatusId] ?? '';
+        return $resolved !== '' ? $resolved : 'Unspecified';
+    }
+
+    $rawValue = $item[$columnName] ?? null;
+
+    if ($rawValue === null || $rawValue === '') {
+        return 'Unspecified';
+    }
+
+    $resolved = $lookupMaps[$columnName][(string) $rawValue] ?? '';
+    return $resolved !== '' ? $resolved : (string) $rawValue;
+}
+
+function inventory_build_summary_metric(PDO $pdo, array $items, array $lookupMaps, string $columnName, string $title, string $distinctLabel): array
+{
+    if (!$items) {
+        return [
+            'title' => $title,
+            'top_label' => 'No data',
+            'top_count' => 0,
+            'distinct_count' => 0,
+            'distinct_label' => $distinctLabel,
+        ];
+    }
+
+    $counts = [];
+
+    foreach ($items as $item) {
+        $label = inventory_summary_label($pdo, $item, $columnName, $lookupMaps);
+        $counts[$label] = ($counts[$label] ?? 0) + 1;
+    }
+
+    uksort($counts, static fn (string $left, string $right): int => strcasecmp($left, $right));
+    arsort($counts);
+
+    $topLabel = (string) array_key_first($counts);
+    $topCount = (int) current($counts);
+
+    return [
+        'title' => $title,
+        'top_label' => $topLabel,
+        'top_count' => $topCount,
+        'distinct_count' => count($counts),
+        'distinct_label' => $distinctLabel,
+    ];
+}
+
+function inventory_summary_metrics(PDO $pdo, array $items, array $lookups): array
+{
+    $lookupMaps = inventory_lookup_label_maps($lookups);
+
+    return [
+        'deployment_status_id' => inventory_build_summary_metric($pdo, $items, $lookupMaps, 'deployment_status_id', 'Deployment Status', 'statuses'),
+        'company_id' => inventory_build_summary_metric($pdo, $items, $lookupMaps, 'company_id', 'Company', 'companies'),
+        'category_id' => inventory_build_summary_metric($pdo, $items, $lookupMaps, 'category_id', 'Category', 'categories'),
+        'age_status_id' => inventory_build_summary_metric($pdo, $items, $lookupMaps, 'age_status_id', 'Age Status', 'age groups'),
+    ];
 }
 
 function inventory_form_columns(PDO $pdo): array
@@ -558,11 +650,8 @@ function inventory_deploy_item(PDO $pdo, array $source, int $userId = 1): array
     $deploymentStatusId = isset($source['deployment_status_id']) && $source['deployment_status_id'] !== ''
         ? (int) $source['deployment_status_id']
         : null;
-    $inventoryStatusId = isset($source['inventory_status_id']) && $source['inventory_status_id'] !== ''
-        ? (int) $source['inventory_status_id']
-        : (isset($item['inventory_status_id']) ? (int) $item['inventory_status_id'] : null);
 
-    if ($deploymentStatusId === null || $inventoryStatusId === null) {
+    if ($deploymentStatusId === null) {
         return ['success' => false, 'message' => 'Deployment status is required.'];
     }
 
@@ -580,7 +669,6 @@ function inventory_deploy_item(PDO $pdo, array $source, int $userId = 1): array
         'UPDATE inventory
          SET department_id = :department_id,
              deployment_status_id = :deployment_status_id,
-             inventory_status_id = :inventory_status_id,
              deployed_date = :deployed_date,
              returned_date = :returned_date
          WHERE inventory_id = :inventory_id'
@@ -589,7 +677,6 @@ function inventory_deploy_item(PDO $pdo, array $source, int $userId = 1): array
     $updateStatement->execute([
         'department_id' => $departmentId,
         'deployment_status_id' => $deploymentStatusId,
-        'inventory_status_id' => $inventoryStatusId,
         'deployed_date' => $deployedDate,
         'returned_date' => $returnedDate,
         'inventory_id' => $inventoryId,
@@ -661,6 +748,7 @@ function inventory_page_payload(PDO $pdo): array
         'items' => $items,
         'filters' => inventory_lookup_options($pdo, inventory_filter_columns()),
         'lookups' => $lookups,
+        'summaries' => inventory_summary_metrics($pdo, $items, $lookups),
         'form_columns' => inventory_form_columns($pdo),
         'next_inventory_no' => inventory_next_inventory_no($pdo),
     ];

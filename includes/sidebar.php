@@ -1,7 +1,7 @@
 <?php
 // includes/sidebar.php
 // Usage: include 'includes/sidebar.php';
-// Set $current_page before including (e.g. 'dashboard', 'inventory', 'history', 'users', 'reports', 'settings')
+// Set $current_page before including (e.g. 'dashboard', 'inventory', 'deployment', 'history', 'users', 'reports', 'settings')
 $current_page = $current_page ?? 'dashboard';
 $role = $_GET['role'] ?? 'user';
 
@@ -9,6 +9,7 @@ $nav = [
     'main' => [
         ['id' => 'dashboard', 'label' => 'Dashboard',  'icon' => 'grid',       'href' => 'dashboard.php'],
         ['id' => 'inventory', 'label' => 'Inventory',  'icon' => 'package',    'href' => 'inventory.php', 'badge' => '12'],
+        ['id' => 'deployment','label' => 'Deployment', 'icon' => 'package',    'href' => 'deployment.php'],
         ['id' => 'history',   'label' => 'History Log','icon' => 'clock',      'href' => 'history.php'],
         ['id' => 'reports',   'label' => 'Reports',    'icon' => 'bar-chart',  'href' => 'reports.php'],
     ],
